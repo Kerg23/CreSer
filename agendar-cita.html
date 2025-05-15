@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agendar Cita | CreSer</title>
+  <link rel="stylesheet" href="agendar-cita.css" />
+</head>
+<body>
+  <section class="agenda-container">
+    <h1>Agendar una Cita</h1>
+    <form id="agenda-form">
+      <div class="form-group">
+        <label for="servicio">Servicio:</label>
+        <select id="servicio" required>
+          <option value="">Escoge tu servicio</option>
+          <option value="consulta">Consulta Psicológica</option>
+          <option value="terapia-familiar">Terapia Familiar</option>
+          <option value="evaluacion">Evaluación Psicológica</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="nombre">Nombre:</label>
+        <input type="text" id="nombre" placeholder="Escribe tu nombre" required />
+      </div>
+
+      <div class="form-group">
+        <label for="correo">Correo:</label>
+        <input type="email" id="correo" placeholder="Escribe tu correo electrónico" required />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fecha">Fecha:</label>
+          <input type="date" id="fecha" required />
+        </div>
+
+        <div class="form-group">
+          <label for="hora">Hora:</label>
+          <select id="hora" required>
+            <option value="">Hora</option>
+            <option value="08:00">08:00 AM</option>
+            <option value="10:00">10:00 AM</option>
+            <option value="14:00">02:00 PM</option>
+            <option value="16:00">04:00 PM</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modalidad-container">
+        <label>Modalidad:</label>
+        <label><input type="radio" name="modalidad" value="presencial" required> Presencial</label>
+        <label><input type="radio" name="modalidad" value="virtual"> Virtual</label>
+      </div>
+
+      <button type="submit" id="agendar-btn" disabled>Agendar</button>
+    </form>
+  </section>
+
+  <script src="calendario.js"></script>
+</body>
+</html>

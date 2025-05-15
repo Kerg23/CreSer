@@ -1,0 +1,66 @@
+.footer {
+  background-color: #d9ece7;
+  padding: 3rem 1rem;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  align-items: start;
+}
+
+.footer-info h2,
+.footer-info h3,
+.footer-form h2 {
+  color: #006c67;
+  margin-bottom: 1rem;
+}
+
+.footer-info p {
+  margin: 0;
+  color: #333;
+}
+
+.footer-icons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.footer-icons img {
+  width: 24px;
+  filter: invert(27%) sepia(74%) saturate(300%) hue-rotate(120deg);
+}
+
+.footer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.footer-form input,
+.footer-form textarea {
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+.footer-form button {
+  background-color: #f2cd00;
+  color: #000;
+  font-weight: bold;
+  border: none;
+  padding: 0.8rem;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.footer-form button:hover {
+  background-color: #e6c200;
+}
