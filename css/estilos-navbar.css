@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+body {
+    font-family: 'Montserrat';
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #FCEFEF;  /*#1d6d5d*/   /*#e0f5ef*/
+    padding: 15px 30px;
+    color: white;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.navbar .boton-acceder{
+    margin-left: auto;
+    height: 100%; 
+    align-self: center; 
+}
+
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap:2px;
+}
+
+
+#logo1{
+    height: 60px;
+}
+
+#logo2{
+    width: 150px;
+    height: auto;
+}
+
+
+.menu {
+    display: flex;
+    gap: 20px;
+}
+
+.menu a {
+    color: #333333;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 5px 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.menu a:hover {
+    color: #ffd84d;
+    border-color: #ffd84d;
+}
+
+
+.boton-acceder a {
+    background-color: #ffd84d;
+    color: #333333;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.3s;
+    display: inline-block;
+}
+
+.boton-acceder a:hover {
+    background-color: #ffc107;
+    color: white;
+}
+
+
+
+@media (max-width: 1024px) {
+    .navbar {
+        flex-wrap: wrap;
+    }
+
+    .menu {
+        margin-top: 20px;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+  
+}
+
+@media (max-width: 600px) {
+    .navbar {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .menu {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    
+}
