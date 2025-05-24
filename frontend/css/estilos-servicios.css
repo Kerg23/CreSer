@@ -1,0 +1,478 @@
+/* ========================================
+   IMPORTACIÓN DE FUENTES
+======================================== */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap');
+
+/* ========================================
+   RESET Y ESTILOS GENERALES
+======================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #effcfc;
+    font-family: 'Montserrat', sans-serif;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* ========================================
+   VARIABLES CSS (COLORES)
+======================================== */
+:root {
+    --color-primary: #4EC3B1;
+    --color-secondary: #15846B;
+    --color-accent: #f3cc0c;
+    --color-error: #e74c3c;
+    --color-text: #333;
+    --color-text-light: #666;
+    --color-text-muted: #555;
+    --color-bg-light: #f9f9f9;
+    --color-bg-section: #f5f5f5;
+    --color-footer-bg: #FCEFEF;
+    --color-footer-text: #004d40;
+    --color-white: #ffffff;
+    --color-border: #f0f0f0;
+    --color-shadow: rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   SECCIÓN TÍTULO PRINCIPAL
+======================================== */
+.titulo-principal {
+    padding: 60px 20px;
+    text-align: center;
+    background-color: var(--color-bg-light);
+}
+
+.titulo-principal h1 {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 20px;
+}
+
+.subtitulo {
+    font-size: 24px;
+    color: var(--color-secondary);
+}
+
+.subtitulo p {
+    margin: 5px 0;
+}
+
+/* ========================================
+   CATEGORÍAS DE SERVICIOS
+======================================== */
+.categorias-servicios {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.categoria-item {
+    margin-bottom: 60px;
+}
+
+.categoria-item h2 {
+    font-size: 32px;
+    color: var(--color-secondary);
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: 10px;
+    margin-bottom: 30px;
+}
+
+/* ========================================
+   TARJETAS DE SERVICIOS
+======================================== */
+.servicio-card {
+    background-color: var(--color-white);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px var(--color-shadow);
+    padding: 25px;
+    margin-bottom: 20px;
+    transition: transform 0.3s ease;
+}
+
+.servicio-card:hover {
+    transform: translateY(-5px);
+}
+
+.servicio-info h3 {
+    font-size: 24px;
+    color: var(--color-text);
+    margin-bottom: 15px;
+}
+
+.duracion {
+    color: var(--color-text-light);
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.precio {
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--color-secondary);
+}
+
+.ahorro {
+    color: var(--color-error);
+    font-weight: 600;
+    font-size: 16px;
+    margin-left: 10px;
+}
+
+.detalle {
+    font-size: 16px;
+    font-weight: normal;
+}
+
+/* Listas en servicios */
+.servicio-info ul {
+    list-style-type: none;
+    margin-top: 15px;
+}
+
+.servicio-info li {
+    margin-bottom: 10px;
+    padding-left: 20px;
+    position: relative;
+}
+
+.servicio-info li:before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--color-primary);
+}
+
+/* ========================================
+   ACORDEÓN DE SERVICIOS
+======================================== */
+.servicio-header {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    transition: background-color 0.3s ease;
+}
+
+.servicio-header:hover {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
+    margin: -10px;
+}
+
+.expandir {
+    font-size: 28px;
+    color: var(--color-primary);
+    font-weight: bold;
+    transition: transform 0.3s ease;
+    margin-left: 15px;
+    flex-shrink: 0;
+    margin-top: 5px;
+}
+
+.expandir.activo {
+    transform: rotate(45deg);
+    color: var(--color-secondary);
+}
+
+.servicio-descripcion {
+    display: none;
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 2px solid var(--color-border);
+    color: var(--color-text-muted);
+    line-height: 1.7;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.servicio-descripcion p {
+    margin-bottom: 15px;
+    text-align: justify;
+    font-size: 16px;
+}
+
+/* Animación para el acordeón */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================
+   INFORMACIÓN ADICIONAL
+======================================== */
+.info-adicional {
+    background-color: var(--color-bg-section);
+    padding: 40px 20px;
+}
+
+.beneficios {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+}
+
+.beneficio-item {
+    display: flex;
+    align-items: center;
+    margin: 15px;
+    padding: 15px;
+    background-color: var(--color-white);
+    border-radius: 8px;
+    box-shadow: 0 2px 5px var(--color-shadow);
+    width: 350px;
+}
+
+.icono {
+    font-size: 24px;
+    color: var(--color-primary);
+    margin-right: 15px;
+}
+
+/* ========================================
+   LLAMADO A LA ACCIÓN
+======================================== */
+.cta-seccion {
+    text-align: center;
+    padding: 60px 20px;
+    background-color: var(--color-bg-light);
+}
+
+.cta-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 30px;
+    border: 2px solid var(--color-primary);
+    border-radius: 10px;
+    background-color: var(--color-white);
+}
+
+.cta-container h2 {
+    font-size: 32px;
+    color: var(--color-secondary);
+    margin-bottom: 20px;
+}
+
+.btn-agendar {
+    display: inline-block;
+    padding: 12px 30px;
+    background-color: var(--color-secondary);
+    color: var(--color-white);
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 5px;
+    margin-top: 20px;
+    transition: background-color 0.3s ease;
+}
+
+.btn-agendar:hover {
+    background-color: var(--color-primary);
+}
+
+/* ========================================
+   FOOTER
+======================================== */
+.footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 2rem;
+    background-color: var(--color-footer-bg);
+    color: var(--color-footer-text);
+    flex-wrap: wrap;
+}
+
+.footer-info,
+.footer-form {
+    flex: 1 1 300px;
+    margin: 1rem;
+    padding-right: 5rem;
+}
+
+.footer h3, 
+.footer h4 {
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+/* Iconos sociales */
+.social-icons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.social-icons a {
+    font-size: 24px;
+    color: var(--color-footer-text);
+    transition: transform 0.2s ease, color 0.3s ease;
+}
+
+.social-icons a:hover {
+    transform: scale(1.2);
+}
+
+.social-icons a:nth-child(1) { color: #1877f2; }  /* Facebook */
+.social-icons a:nth-child(2) { color: #e4405f; }  /* Instagram */
+.social-icons a:nth-child(3) { color: #25d366; }  /* WhatsApp */
+
+/* Formulario del footer */
+.footer-form form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.footer-form input,
+.footer-form textarea {
+    padding: 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: none;
+}
+
+.footer-form button {
+    padding: 0.7rem;
+    background-color: var(--color-accent);
+    border: none;
+    border-radius: 20px;
+    font-family: 'Montserrat', sans-serif;
+    color: var(--color-text);
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.footer-form button:hover {
+    background-color: #e6bc00;
+}
+
+#logo-footer {
+    width: 200px;
+    height: 80px;
+}
+
+/* ========================================
+   MEDIA QUERIES - RESPONSIVE DESIGN
+======================================== */
+
+/* Tablets y pantallas medianas */
+@media (max-width: 768px) {
+    /* Título principal */
+    .titulo-principal h1 {
+        font-size: 36px;
+    }
+    
+    .subtitulo {
+        font-size: 20px;
+    }
+    
+    /* Categorías */
+    .categoria-item h2 {
+        font-size: 28px;
+    }
+    
+    /* Servicios */
+    .servicio-info h3 {
+        font-size: 20px;
+    }
+    
+    /* Beneficios */
+    .beneficio-item {
+        width: 100%;
+    }
+    
+    /* Acordeón responsive */
+    .servicio-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .expandir {
+        position: absolute;
+        top: 5px;
+        right: 10px;
+        margin: 0;
+    }
+    
+    .servicio-descripcion p {
+        font-size: 15px;
+    }
+    
+    /* Footer responsive */
+    .footer {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .footer-info,
+    .footer-form {
+        width: 100%;
+        max-width: 500px;
+    }
+}
+
+/* Móviles y pantallas pequeñas */
+@media (max-width: 480px) {
+    /* Título principal */
+    .titulo-principal h1 {
+        font-size: 28px;
+    }
+    
+    .subtitulo {
+        font-size: 18px;
+    }
+    
+    /* Categorías */
+    .categoria-item h2 {
+        font-size: 24px;
+    }
+    
+    /* Servicios */
+    .servicio-info h3 {
+        font-size: 18px;
+    }
+    
+    .precio {
+        font-size: 18px;
+    }
+    
+    /* CTA */
+    .cta-container h2 {
+        font-size: 24px;
+    }
+    
+    .btn-agendar {
+        padding: 10px 20px;
+        font-size: 16px;
+    }
+    
+    /* Acordeón móvil */
+    .expandir {
+        font-size: 24px;
+        top: 0px;
+        right: 5px;
+    }
+    
+    .servicio-descripcion p {
+        font-size: 14px;
+    }
+}
