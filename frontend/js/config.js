@@ -317,26 +317,54 @@ const FORMAT_UTILS = {
     formatDate: (dateString) => {
         if (!dateString) return 'No especificada';
 
-        const date = new Date(dateString);
-        return new Intl.DateTimeFormat('es-CO', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        }).format(date);
+        try {
+            let date;
+            
+            // SOLUCIÓN: Manejar fechas de solo día (YYYY-MM-DD) sin zona horaria
+            if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                // Crear fecha local sin zona horaria
+                const [year, month, day] = dateString.split('-');
+                date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            } else {
+                date = new Date(dateString);
+            }
+            
+            return new Intl.DateTimeFormat('es-CO', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }).format(date);
+        } catch (error) {
+            console.error('Error formateando fecha:', error);
+            return 'Fecha inválida';
+        }
     },
 
-    // Formatear fecha y hora
+    // Formatear fecha y hora - TAMBIÉN CORREGIDO
     formatDateTime: (dateString) => {
         if (!dateString) return 'No especificada';
 
-        const date = new Date(dateString);
-        return new Intl.DateTimeFormat('es-CO', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        }).format(date);
+        try {
+            let date;
+            
+            if (typeof dateString === 'string' && dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                const [year, month, day] = dateString.split('-');
+                date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            } else {
+                date = new Date(dateString);
+            }
+            
+            return new Intl.DateTimeFormat('es-CO', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        } catch (error) {
+            console.error('Error formateando fecha y hora:', error);
+            return 'Fecha inválida';
+        }
     },
 
     // Formatear hora

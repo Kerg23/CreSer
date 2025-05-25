@@ -32,23 +32,23 @@ class CacheManager {
             timestamp: Date.now()
         });
     }
-    
+
     static get(key) {
         const cached = dataCache.get(key);
         if (!cached) return null;
-        
+
         if (Date.now() - cached.timestamp > CACHE_DURATION) {
             dataCache.delete(key);
             return null;
         }
-        
+
         return cached.data;
     }
-    
+
     static clear() {
         dataCache.clear();
     }
-    
+
     static invalidate(pattern) {
         for (const key of dataCache.keys()) {
             if (key.includes(pattern)) {
@@ -64,12 +64,12 @@ class LoadingManager {
         loadingStates.add(operation);
         this.updateUI();
     }
-    
+
     static end(operation) {
         loadingStates.delete(operation);
         this.updateUI();
     }
-    
+
     static updateUI() {
         const isLoading = loadingStates.size > 0;
         document.body.classList.toggle('loading', isLoading);
@@ -80,9 +80,9 @@ class LoadingManager {
 class ErrorHandler {
     static handle(error, operation) {
         console.error(`❌ Error en ${operation}:`, error);
-        
+
         let message = 'Ha ocurrido un error inesperado';
-        
+
         if (error.message.includes('Failed to fetch')) {
             message = 'Error de conexión. Verifica tu internet.';
         } else if (error.message.includes('401')) {
@@ -95,7 +95,7 @@ class ErrorHandler {
         } else if (error.message) {
             message = error.message;
         }
-        
+
         mostrarMensaje(message, 'error');
     }
 }
@@ -104,15 +104,15 @@ class ErrorHandler {
 
 function configurarEventosAdmin() {
     console.log('🔧 Configurando eventos del panel admin...');
-    
+
     // Búsqueda de clientes con debounce
     const buscarCliente = document.getElementById('buscar-cliente');
     if (buscarCliente) {
-        buscarCliente.addEventListener('input', debounce(function() {
+        buscarCliente.addEventListener('input', debounce(function () {
             filtrarClientes(this.value);
         }, DEBOUNCE_DELAY));
     }
-    
+
     // Filtros con optimización
     const setupFilter = (id, handler) => {
         const element = document.getElementById(id);
@@ -120,46 +120,39 @@ function configurarEventosAdmin() {
             element.addEventListener('change', debounce(handler, DEBOUNCE_DELAY));
         }
     };
-    
+
     setupFilter('filtro-estado-pago', cargarPagosAdmin);
     setupFilter('filtro-fecha', cargarCitasPorPeriodo);
     setupFilter('periodo-reporte', cargarReportes);
-    
 
-        // AGREGADO: Configurar filtro de fecha para citas
-    const filtroFecha = document.getElementById('filtro-fecha');
-    if (filtroFecha) {
-        filtroFecha.addEventListener('change', function() {
-            console.log('📅 Período seleccionado:', this.value);
-            cargarCitasPorPeriodo();
-        });
-    }
+
+    configurarFiltroCalendario();
     // Event delegation para acciones dinámicas
     document.addEventListener('click', handleDynamicActions);
-    
+
     console.log('✅ Eventos configurados correctamente');
 }
 
 // Handler centralizado para acciones dinámicas
 function handleDynamicActions(event) {
     const target = event.target;
-    
+
     // Prevenir múltiples clicks
     if (target.disabled || target.classList.contains('loading')) return;
-    
+
     // Acciones de citas
     if (target.classList.contains('btn-confirmar-mini')) {
         event.preventDefault();
         const citaId = target.getAttribute('data-cita-id');
         if (citaId) confirmarCitaReal(parseInt(citaId));
     }
-    
+
     if (target.classList.contains('btn-completar-mini')) {
         event.preventDefault();
         const citaId = target.getAttribute('data-cita-id');
         if (citaId) completarCitaReal(parseInt(citaId));
     }
-    
+
     // Acciones de pagos
     if (target.classList.contains('btn-aprobar-mini')) {
         event.preventDefault();
@@ -172,46 +165,46 @@ function handleDynamicActions(event) {
 
 async function cargarDashboard() {
     const operation = 'dashboard';
-    
+
     try {
         LoadingManager.start(operation);
         console.log('🔄 Cargando estadísticas del dashboard...');
-        
+
         // Verificar cache primero
         const cachedStats = CacheManager.get('dashboard-stats');
         if (cachedStats) {
             actualizarEstadisticasReales(cachedStats);
             console.log('✅ Estadísticas cargadas desde cache');
         }
-        
+
         // Cargar datos frescos en paralelo
         const [stats, citasHoy, pagos] = await Promise.allSettled([
             apiRequest(CONFIG.ENDPOINTS.ADMIN_ESTADISTICAS),
             apiRequest(CONFIG.ENDPOINTS.ADMIN_CITAS_HOY),
             apiRequest(`${CONFIG.ENDPOINTS.ADMIN_PAGOS_DETALLADO}?estado=pendiente`)
         ]);
-        
+
         // Procesar estadísticas
         if (stats.status === 'fulfilled') {
             CacheManager.set('dashboard-stats', stats.value);
             actualizarEstadisticasReales(stats.value);
         }
-        
+
         // Procesar citas de hoy
         if (citasHoy.status === 'fulfilled') {
             CacheManager.set('citas-hoy', citasHoy.value);
             actualizarCitasHoy(citasHoy.value);
         }
-        
+
         // Procesar pagos pendientes
         if (pagos.status === 'fulfilled') {
             CacheManager.set('pagos-pendientes', pagos.value);
             actualizarPagosPendientes(pagos.value);
         }
-        
+
         // Actualizar timestamp
         actualizarTimestamp();
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -222,9 +215,9 @@ async function cargarDashboard() {
 function actualizarEstadisticasReales(stats) {
     try {
         if (!stats || typeof stats !== 'object') return;
-        
+
         const { usuarios = {}, citas = {}, ingresos = {}, pagos = {} } = stats;
-        
+
         // Batch DOM updates para mejor rendimiento
         const updates = [
             { id: 'total-clientes', value: usuarios.total || 0, title: `${usuarios.activos || 0} activos` },
@@ -232,7 +225,7 @@ function actualizarEstadisticasReales(stats) {
             { id: 'ingresos-mes', value: formatearPrecio(ingresos.mes || 0), title: `Total: ${formatearPrecio(ingresos.total || 0)}` },
             { id: 'satisfaccion', value: `${citas.tasa_asistencia || 0}%`, title: 'Tasa de asistencia a citas' }
         ];
-        
+
         // Aplicar updates en batch
         requestAnimationFrame(() => {
             updates.forEach(({ id, value, title }) => {
@@ -242,22 +235,22 @@ function actualizarEstadisticasReales(stats) {
                     element.setAttribute('title', title);
                 }
             });
-            
+
             // Actualizar descripciones
             const descUpdates = [
                 { id: 'desc-clientes', value: `${usuarios.activos || 0} activos` },
                 { id: 'desc-citas', value: `${citas.pendientes || 0} pendientes` },
                 { id: 'desc-ingresos', value: `${pagos.aprobados || 0} pagos aprobados` }
             ];
-            
+
             descUpdates.forEach(({ id, value }) => {
                 const element = document.getElementById(id);
                 if (element) element.textContent = value;
             });
         });
-        
+
         actualizarEstadisticasAdicionales(stats);
-        
+
     } catch (error) {
         console.error('❌ Error actualizando estadísticas:', error);
     }
@@ -268,7 +261,7 @@ function actualizarEstadisticasAdicionales(stats) {
         const { pagos = {}, creditos = {} } = stats;
         const statsGrid = document.getElementById('stats-grid');
         if (!statsGrid) return;
-        
+
         const estadisticasAdicionales = [
             {
                 id: 'pagos-pendientes-stat',
@@ -285,10 +278,10 @@ function actualizarEstadisticasAdicionales(stats) {
                 descripcion: 'Créditos disponibles total'
             }
         ];
-        
+
         // Fragment para mejor rendimiento
         const fragment = document.createDocumentFragment();
-        
+
         estadisticasAdicionales.forEach(stat => {
             let tarjeta = document.getElementById(stat.id);
             if (!tarjeta) {
@@ -311,11 +304,11 @@ function actualizarEstadisticasAdicionales(stats) {
                 if (descEl) descEl.textContent = stat.descripcion;
             }
         });
-        
+
         if (fragment.children.length > 0) {
             statsGrid.appendChild(fragment);
         }
-        
+
     } catch (error) {
         console.error('❌ Error en estadísticas adicionales:', error);
     }
@@ -324,15 +317,15 @@ function actualizarEstadisticasAdicionales(stats) {
 function actualizarCitasHoy(citas) {
     const container = document.querySelector('.citas-hoy-lista');
     if (!container) return;
-    
+
     if (!citas || citas.length === 0) {
         container.innerHTML = '<p class="sin-citas">No hay citas programadas para hoy</p>';
         return;
     }
-    
+
     // Usar fragment para mejor rendimiento
     const fragment = document.createDocumentFragment();
-    
+
     citas.forEach(cita => {
         const citaElement = document.createElement('div');
         citaElement.className = `cita-mini ${cita.estado || 'agendada'}`;
@@ -359,7 +352,7 @@ function actualizarCitasHoy(citas) {
         `;
         fragment.appendChild(citaElement);
     });
-    
+
     container.innerHTML = '';
     container.appendChild(fragment);
 }
@@ -367,14 +360,14 @@ function actualizarCitasHoy(citas) {
 function actualizarPagosPendientes(pagos) {
     const container = document.querySelector('.pagos-pendientes');
     if (!container) return;
-    
+
     if (!pagos || pagos.length === 0) {
         container.innerHTML = '<p class="sin-pagos">No hay pagos pendientes</p>';
         return;
     }
-    
+
     const fragment = document.createDocumentFragment();
-    
+
     pagos.slice(0, 5).forEach(pago => {
         const pagoElement = document.createElement('div');
         pagoElement.className = 'pago-pendiente';
@@ -392,7 +385,7 @@ function actualizarPagosPendientes(pagos) {
         `;
         fragment.appendChild(pagoElement);
     });
-    
+
     container.innerHTML = '';
     container.appendChild(fragment);
 }
@@ -408,23 +401,23 @@ function actualizarTimestamp() {
 
 async function cargarClientes() {
     const operation = 'clientes';
-    
+
     try {
         LoadingManager.start(operation);
         console.log('🔄 Cargando clientes...');
-        
+
         // Verificar cache
         const cached = CacheManager.get('usuarios-completo');
         if (cached) {
             renderizarClientes(cached);
             console.log('✅ Clientes cargados desde cache');
         }
-        
+
         // Cargar datos frescos
         const usuarios = await apiRequest(CONFIG.ENDPOINTS.ADMIN_USUARIOS_COMPLETO);
         CacheManager.set('usuarios-completo', usuarios);
         renderizarClientes(usuarios);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -435,15 +428,15 @@ async function cargarClientes() {
 function renderizarClientes(usuarios) {
     const tbody = document.getElementById('tabla-clientes-body');
     if (!tbody) return;
-    
+
     if (!usuarios || usuarios.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7">No hay clientes registrados</td></tr>';
         return;
     }
-    
+
     // Usar fragment para mejor rendimiento
     const fragment = document.createDocumentFragment();
-    
+
     usuarios.forEach(usuario => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -466,16 +459,16 @@ function renderizarClientes(usuarios) {
         `;
         fragment.appendChild(row);
     });
-    
+
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
 
 // Filtro optimizado con Virtual Scrolling para grandes datasets
-const filtrarClientes = debounce(function(termino) {
+const filtrarClientes = debounce(function (termino) {
     const filas = document.querySelectorAll('#tabla-clientes-body tr');
     const terminoLower = termino.toLowerCase();
-    
+
     // Usar requestAnimationFrame para evitar bloqueo del UI
     requestAnimationFrame(() => {
         filas.forEach(fila => {
@@ -489,31 +482,43 @@ const filtrarClientes = debounce(function(termino) {
 
 async function cargarCitasPorPeriodo() {
     const operation = 'citas-periodo';
-    
+
     try {
         LoadingManager.start(operation);
-        
-        // CORREGIDO: Obtener período del select
-        const periodoSeleccionado = document.getElementById('filtro-fecha')?.value || 'hoy';
-        
-        console.log('🔄 Cargando citas por período:', periodoSeleccionado);
-        
-        // CORREGIDO: Usar endpoint correcto con parámetro período
-        let endpoint = `${CONFIG.ENDPOINTS.CITAS}?periodo=${periodoSeleccionado}`;
-        let cacheKey = `citas-${periodoSeleccionado}`;
-        
+
+        // CORREGIDO: Solo usar filtro de calendario
+        const fechaCalendario = document.getElementById('calendario-filtro')?.value;
+
+        let endpoint;
+        let cacheKey;
+
+        if (fechaCalendario) {
+            // Usar filtro de calendario con fecha específica
+            endpoint = `${CONFIG.ENDPOINTS.CITAS}?fecha=${fechaCalendario}`;
+            cacheKey = `citas-fecha-${fechaCalendario}`;
+            console.log('🔄 Cargando citas para fecha:', fechaCalendario);
+        } else {
+            // Sin filtro = mostrar citas de hoy por defecto
+            endpoint = `${CONFIG.ENDPOINTS.CITAS}?periodo=hoy`;
+            cacheKey = 'citas-hoy-default';
+            console.log('🔄 Cargando citas de hoy (sin filtro)');
+        }
+
         const cached = CacheManager.get(cacheKey);
         if (cached) {
             renderizarCitasPeriodo(cached);
             console.log('✅ Citas cargadas desde cache');
         }
-        
+
         const citas = await apiRequest(endpoint);
         CacheManager.set(cacheKey, citas);
         renderizarCitasPeriodo(citas);
         actualizarResumenCitas(citas);
-        
+
+        console.log(`✅ ${citas.length} citas cargadas para el período seleccionado`);
+
     } catch (error) {
+        console.error('❌ Error cargando citas:', error);
         ErrorHandler.handle(error, operation);
     } finally {
         LoadingManager.end(operation);
@@ -521,20 +526,22 @@ async function cargarCitasPorPeriodo() {
 }
 
 
+
 function renderizarCitasPeriodo(citas) {
     const container = document.getElementById('citas-del-periodo');
     if (!container) return;
-    
+
     if (!citas || citas.length === 0) {
         container.innerHTML = '<p>No hay citas para el período seleccionado</p>';
         return;
     }
-    
+
     const fragment = document.createDocumentFragment();
-    
+
     citas.forEach(cita => {
         const citaCard = document.createElement('div');
         citaCard.className = 'cita-admin-card';
+        console.log(cita.fecha);
         citaCard.innerHTML = `
             <div class="cita-fecha-hora">
                 <div class="fecha">${formatearFecha(cita.fecha)}</div>
@@ -558,7 +565,7 @@ function renderizarCitasPeriodo(citas) {
         `;
         fragment.appendChild(citaCard);
     });
-    
+
     container.innerHTML = '';
     container.appendChild(fragment);
 }
@@ -570,14 +577,14 @@ function actualizarResumenCitas(citas) {
         completadas: citas.filter(c => c.estado === 'completada').length,
         canceladas: citas.filter(c => c.estado === 'cancelada').length
     };
-    
+
     const updates = [
         { id: 'total-citas-periodo', value: resumen.total },
         { id: 'citas-confirmadas', value: resumen.confirmadas },
         { id: 'citas-completadas', value: resumen.completadas },
         { id: 'citas-canceladas', value: resumen.canceladas }
     ];
-    
+
     requestAnimationFrame(() => {
         updates.forEach(({ id, value }) => {
             const element = document.getElementById(id);
@@ -590,31 +597,31 @@ function actualizarResumenCitas(citas) {
 
 async function cargarPagosAdmin() {
     const operation = 'pagos-admin';
-    
+
     try {
         LoadingManager.start(operation);
         const filtroEstado = document.getElementById('filtro-estado-pago')?.value || 'todos';
-        
+
         console.log('🔄 Cargando pagos admin, filtro:', filtroEstado);
-        
+
         const cacheKey = `pagos-${filtroEstado}`;
         const cached = CacheManager.get(cacheKey);
-        
+
         if (cached) {
             renderizarPagosAdmin(cached);
             console.log('✅ Pagos cargados desde cache');
         }
-        
+
         let endpoint = CONFIG.ENDPOINTS.ADMIN_PAGOS_DETALLADO;
         if (filtroEstado !== 'todos') {
             endpoint += `?estado=${filtroEstado}`;
         }
-        
+
         const pagos = await apiRequest(endpoint);
         CacheManager.set(cacheKey, pagos);
         renderizarPagosAdmin(pagos);
         actualizarResumenPagos(pagos);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -625,14 +632,14 @@ async function cargarPagosAdmin() {
 function renderizarPagosAdmin(pagos) {
     const tbody = document.getElementById('tabla-pagos-body');
     if (!tbody) return;
-    
+
     if (!pagos || pagos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8">No hay pagos para mostrar</td></tr>';
         return;
     }
-    
+
     const fragment = document.createDocumentFragment();
-    
+
     pagos.forEach(pago => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -666,7 +673,7 @@ function renderizarPagosAdmin(pagos) {
         `;
         fragment.appendChild(row);
     });
-    
+
     tbody.innerHTML = '';
     tbody.appendChild(fragment);
 }
@@ -678,14 +685,14 @@ function actualizarResumenPagos(pagos) {
         aprobados: pagos.filter(p => p.estado === 'aprobado').length,
         montoTotal: pagos.reduce((sum, p) => sum + (p.monto || 0), 0)
     };
-    
+
     const updates = [
         { id: 'total-pagos', value: resumen.total },
         { id: 'pagos-pendientes-count', value: resumen.pendientes },
         { id: 'pagos-aprobados-count', value: resumen.aprobados },
         { id: 'monto-total-pagos', value: formatearPrecio(resumen.montoTotal) }
     ];
-    
+
     requestAnimationFrame(() => {
         updates.forEach(({ id, value }) => {
             const element = document.getElementById(id);
@@ -698,35 +705,35 @@ function actualizarResumenPagos(pagos) {
 
 async function cargarReportes() {
     const operation = 'reportes';
-    
+
     try {
         LoadingManager.start(operation);
         console.log('📊 Cargando reportes...');
-        
+
         const periodo = document.getElementById('periodo-reporte')?.value || 'mes';
         const cacheKey = `reportes-${periodo}`;
-        
+
         const cached = CacheManager.get(cacheKey);
         if (cached) {
             await procesarReportes(cached);
             console.log('✅ Reportes cargados desde cache');
         }
-        
+
         const [datosReportes, datosComparacion] = await Promise.allSettled([
             cargarDatosReportes(periodo),
             cargarDatosComparacion(periodo)
         ]);
-        
+
         if (datosReportes.status === 'fulfilled') {
             const reporteData = {
                 datos: datosReportes.value,
                 comparacion: datosComparacion.status === 'fulfilled' ? datosComparacion.value : {}
             };
-            
+
             CacheManager.set(cacheKey, reporteData);
             await procesarReportes(reporteData);
         }
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -746,7 +753,7 @@ async function cargarDatosReportes(periodo) {
             apiRequest(CONFIG.ENDPOINTS.ADMIN_CITAS_HOY),
             apiRequest(CONFIG.ENDPOINTS.ADMIN_PAGOS_DETALLADO)
         ]);
-        
+
         return {
             ingresosPorMes: generarDatosIngresosMes(pagos),
             serviciosPopulares: generarDatosServiciosPopulares(citas),
@@ -779,20 +786,20 @@ function actualizarMetricasReportes(datos, comparacion) {
         citas: { valor: datos.stats?.citas?.mes || 0, variacion: comparacion.citas?.variacion || 0 },
         conversion: { valor: datos.stats?.citas?.tasa_asistencia || 0, variacion: comparacion.conversion?.variacion || 0 }
     };
-    
+
     const updates = [
         { id: 'ingresos-totales-reporte', value: formatearPrecio(metricas.ingresos.valor) },
         { id: 'clientes-nuevos-reporte', value: metricas.clientes.valor },
         { id: 'citas-realizadas-reporte', value: metricas.citas.valor },
         { id: 'tasa-conversion-reporte', value: `${metricas.conversion.valor}%` }
     ];
-    
+
     requestAnimationFrame(() => {
         updates.forEach(({ id, value }) => {
             const element = document.getElementById(id);
             if (element) element.textContent = value;
         });
-        
+
         // Actualizar variaciones
         const variaciones = [
             { id: 'variacion-ingresos', value: metricas.ingresos.variacion },
@@ -800,7 +807,7 @@ function actualizarMetricasReportes(datos, comparacion) {
             { id: 'variacion-citas', value: metricas.citas.variacion },
             { id: 'variacion-conversion', value: metricas.conversion.variacion }
         ];
-        
+
         variaciones.forEach(({ id, value }) => {
             const element = document.getElementById(id);
             if (element) {
@@ -820,13 +827,13 @@ async function generarTodosLosGraficos(datos) {
             }
         });
         chartsInstances = {};
-        
+
         // Verificar que Chart.js esté disponible
         if (typeof Chart === 'undefined') {
             console.warn('Chart.js no está disponible');
             return;
         }
-        
+
         // Generar gráficos con delay para mejor rendimiento
         const graficos = [
             { key: 'ingresosMes', func: () => generarGraficoIngresosMes(datos.ingresosPorMes) },
@@ -836,7 +843,7 @@ async function generarTodosLosGraficos(datos) {
             { key: 'modalidadCitas', func: () => generarGraficoModalidadCitas(datos.modalidadCitas) },
             { key: 'horariosCitas', func: () => generarGraficoHorariosCitas(datos.horariosCitas) }
         ];
-        
+
         for (const { key, func } of graficos) {
             try {
                 chartsInstances[key] = func();
@@ -845,9 +852,9 @@ async function generarTodosLosGraficos(datos) {
                 console.error(`Error generando gráfico ${key}:`, error);
             }
         }
-        
+
         console.log('✅ Todos los gráficos generados');
-        
+
     } catch (error) {
         console.error('❌ Error generando gráficos:', error);
     }
@@ -858,7 +865,7 @@ async function generarTodosLosGraficos(datos) {
 function generarDatosIngresosMes(pagos) {
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const ingresosPorMes = new Array(12).fill(0);
-    
+
     pagos.filter(p => p.estado === 'aprobado').forEach(pago => {
         const fecha = new Date(pago.created_at);
         const mes = fecha.getMonth();
@@ -866,7 +873,7 @@ function generarDatosIngresosMes(pagos) {
             ingresosPorMes[mes] += pago.monto || 0;
         }
     });
-    
+
     return {
         labels: meses,
         datasets: [{
@@ -887,15 +894,15 @@ function generarDatosServiciosPopulares(citas) {
         const servicio = cita.servicio_nombre || 'Servicio';
         servicios[servicio] = (servicios[servicio] || 0) + 1;
     });
-    
+
     const serviciosOrdenados = Object.entries(servicios)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 5);
-    
+
     return {
         labels: serviciosOrdenados.map(([nombre]) => nombre),
         datasets: [{
-            data: serviciosOrdenados.map(([,cantidad]) => cantidad),
+            data: serviciosOrdenados.map(([, cantidad]) => cantidad),
             backgroundColor: [
                 '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
             ],
@@ -910,7 +917,7 @@ function generarDatosEstadoCitas(citas) {
         const estado = cita.estado || 'agendada';
         estados[estado] = (estados[estado] || 0) + 1;
     });
-    
+
     return {
         labels: Object.keys(estados),
         datasets: [{
@@ -924,7 +931,7 @@ function generarDatosEstadoCitas(citas) {
 function generarDatosCrecimientoClientes(stats) {
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'];
     const crecimiento = [120, 135, 142, 148, 152, stats.usuarios?.total || 156];
-    
+
     return {
         labels: meses,
         datasets: [{
@@ -945,7 +952,7 @@ function generarDatosModalidadCitas(citas) {
         const modalidad = cita.modalidad || 'presencial';
         modalidades[modalidad] = (modalidades[modalidad] || 0) + 1;
     });
-    
+
     return {
         labels: Object.keys(modalidades),
         datasets: [{
@@ -964,18 +971,18 @@ function generarDatosHorariosCitas(citas) {
         '14:00-16:00': 0,
         '16:00-18:00': 0
     };
-    
+
     citas.forEach(cita => {
         const hora = cita.hora || '10:00';
         const horaNum = parseInt(hora.split(':')[0]);
-        
+
         if (horaNum >= 8 && horaNum < 10) horarios['08:00-10:00']++;
         else if (horaNum >= 10 && horaNum < 12) horarios['10:00-12:00']++;
         else if (horaNum >= 12 && horaNum < 14) horarios['12:00-14:00']++;
         else if (horaNum >= 14 && horaNum < 16) horarios['14:00-16:00']++;
         else if (horaNum >= 16 && horaNum < 18) horarios['16:00-18:00']++;
     });
-    
+
     return {
         labels: Object.keys(horarios),
         datasets: [{
@@ -993,7 +1000,7 @@ function generarDatosHorariosCitas(citas) {
 function generarGraficoIngresosMes(datos) {
     const ctx = document.getElementById('chartIngresosMes');
     if (!ctx) return null;
-    
+
     return new Chart(ctx, {
         type: 'line',
         data: datos,
@@ -1008,7 +1015,7 @@ function generarGraficoIngresosMes(datos) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return formatearPrecio(value);
                         }
                     }
@@ -1023,7 +1030,7 @@ function generarGraficoIngresosMes(datos) {
 function generarGraficoServiciosPopulares(datos) {
     const ctx = document.getElementById('chartServiciosPopulares');
     if (!ctx) return null;
-    
+
     return new Chart(ctx, {
         type: 'doughnut',
         data: datos,
@@ -1041,7 +1048,7 @@ function generarGraficoServiciosPopulares(datos) {
 function generarGraficoEstadoCitas(datos) {
     const ctx = document.getElementById('chartEstadoCitas');
     if (!ctx) return null;
-    
+
     return new Chart(ctx, {
         type: 'pie',
         data: datos,
@@ -1059,7 +1066,7 @@ function generarGraficoEstadoCitas(datos) {
 function generarGraficoCrecimientoClientes(datos) {
     const ctx = document.getElementById('chartCrecimientoClientes');
     if (!ctx) return null;
-    
+
     return new Chart(ctx, {
         type: 'line',
         data: datos,
@@ -1079,7 +1086,7 @@ function generarGraficoCrecimientoClientes(datos) {
 function generarGraficoModalidadCitas(datos) {
     const ctx = document.getElementById('chartModalidadCitas');
     if (!ctx) return null;
-    
+
     return new Chart(ctx, {
         type: 'doughnut',
         data: datos,
@@ -1097,7 +1104,7 @@ function generarGraficoModalidadCitas(datos) {
 function generarGraficoHorariosCitas(datos) {
     const ctx = document.getElementById('chartHorariosCitas');
     if (!ctx) return null;
-    
+
     return new Chart(ctx, {
         type: 'bar',
         data: datos,
@@ -1117,12 +1124,12 @@ function generarGraficoHorariosCitas(datos) {
 
 async function confirmarCitaReal(citaId) {
     if (!confirm('¿Confirmar esta cita?')) return;
-    
+
     const operation = `confirmar-cita-${citaId}`;
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         await apiRequest(`${CONFIG.ENDPOINTS.CITAS}/${citaId}/confirmar`, {
             method: 'PUT',
             body: JSON.stringify({
@@ -1130,19 +1137,19 @@ async function confirmarCitaReal(citaId) {
                 notas_admin: 'Cita confirmada desde panel administrativo'
             })
         });
-        
+
         mostrarMensaje('Cita confirmada exitosamente', 'success');
-        
+
         // Invalidar cache relacionado
         CacheManager.invalidate('citas');
         CacheManager.invalidate('dashboard');
-        
+
         // Recargar datos
         await Promise.all([
             cargarCitasPorPeriodo(),
             cargarDashboard()
         ]);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -1152,34 +1159,34 @@ async function confirmarCitaReal(citaId) {
 
 async function completarCitaReal(citaId) {
     const notas = prompt('Notas de la sesión (opcional):');
-    
+
     const operation = `completar-cita-${citaId}`;
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         // CORREGIDO: Construir URL con parámetro opcional
         let url = `${CONFIG.ENDPOINTS.CITAS}/${citaId}/completar`;
         if (notas && notas.trim()) {
             url += `?notas_sesion=${encodeURIComponent(notas.trim())}`;
         }
-        
+
         await apiRequest(url, {
             method: 'PUT'
         });
-        
+
         mostrarMensaje('Cita completada exitosamente', 'success');
-        
+
         // Invalidar cache relacionado
         CacheManager.invalidate('citas');
         CacheManager.invalidate('dashboard');
-        
+
         // Recargar datos
         await Promise.all([
             cargarCitasPorPeriodo(),
             cargarDashboard()
         ]);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -1191,7 +1198,7 @@ async function completarCitaReal(citaId) {
 async function verDetallesCitaReal(citaId) {
     try {
         const cita = await apiRequest(`${CONFIG.ENDPOINTS.CITAS}/${citaId}`);
-        
+
         const modal = createModal('modal-detalles-cita', `
             <div class="modal-header">
                 <h3>Detalles de la Cita #${citaId}</h3>
@@ -1235,9 +1242,9 @@ async function verDetallesCitaReal(citaId) {
                 <button onclick="this.closest('.modal-detalles-cita').remove()" class="btn btn-secondary">Cerrar</button>
             </div>
         `);
-        
+
         document.body.appendChild(modal);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, 'ver-detalles-cita');
     }
@@ -1247,12 +1254,12 @@ async function verDetallesCitaReal(citaId) {
 
 async function aprobarPagoReal(pagoId) {
     if (!confirm('¿Aprobar este pago? Se asignarán los créditos automáticamente.')) return;
-    
+
     const operation = `aprobar-pago-${pagoId}`;
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         const endpoint = CONFIG.ENDPOINTS.APROBAR_PAGO.replace('{id}', pagoId);
         await apiRequest(endpoint, {
             method: 'PUT',
@@ -1261,19 +1268,19 @@ async function aprobarPagoReal(pagoId) {
                 notas_admin: 'Pago aprobado desde panel administrativo'
             })
         });
-        
+
         mostrarMensaje('Pago aprobado exitosamente. Créditos asignados.', 'success');
-        
+
         // Invalidar cache
         CacheManager.invalidate('pagos');
         CacheManager.invalidate('dashboard');
-        
+
         // Recargar datos
         await Promise.all([
             cargarPagosAdmin(),
             cargarDashboard()
         ]);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -1284,33 +1291,33 @@ async function aprobarPagoReal(pagoId) {
 async function rechazarPagoReal(pagoId) {
     const motivo = prompt('Motivo del rechazo:');
     if (!motivo) return;
-    
+
     const operation = `rechazar-pago-${pagoId}`;
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         const endpoint = CONFIG.ENDPOINTS.APROBAR_PAGO.replace('{id}', pagoId);
         await apiRequest(endpoint, {
             method: 'PUT',
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 estado: 'rechazado',
-                notas_admin: motivo 
+                notas_admin: motivo
             })
         });
-        
+
         mostrarMensaje('Pago rechazado exitosamente', 'success');
-        
+
         // Invalidar cache
         CacheManager.invalidate('pagos');
         CacheManager.invalidate('dashboard');
-        
+
         // Recargar datos
         await Promise.all([
             cargarPagosAdmin(),
             cargarDashboard()
         ]);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -1330,7 +1337,7 @@ function verComprobanteReal(comprobante) {
 async function verDetallesPagoReal(pagoId) {
     try {
         const pago = await apiRequest(`${CONFIG.ENDPOINTS.PAGOS}/${pagoId}`);
-        
+
         const modal = createModal('modal-pago-detalles', `
             <div class="modal-header">
                 <h3>Detalles del Pago #P${pagoId.toString().padStart(3, '0')}</h3>
@@ -1375,9 +1382,9 @@ async function verDetallesPagoReal(pagoId) {
                 <button onclick="this.closest('.modal-pago-detalles').remove()" class="btn btn-secondary">Cerrar</button>
             </div>
         `);
-        
+
         document.body.appendChild(modal);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, 'ver-detalles-pago');
     }
@@ -1438,12 +1445,12 @@ function nuevoCliente() {
             </div>
         </form>
     `);
-    
+
     document.body.appendChild(modal);
-    
+
     // Configurar evento de submit
     const form = modal.querySelector('#form-nuevo-cliente');
-    form.addEventListener('submit', async function(e) {
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
         await crearNuevoCliente(e.target);
     });
@@ -1460,21 +1467,21 @@ function generarPasswordTemporal() {
 
 async function crearNuevoCliente(form) {
     const operation = 'crear-cliente';
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         const formData = new FormData(form);
-        
+
         // Validaciones básicas en frontend
         const email = formData.get('email');
         const documento = formData.get('documento');
-        
+
         if (!email || !email.includes('@')) {
             mostrarMensaje('Por favor ingresa un email válido', 'error');
             return;
         }
-        
+
         const clienteData = {
             nombre: formData.get('nombre'),
             email: email,
@@ -1484,30 +1491,30 @@ async function crearNuevoCliente(form) {
             tipo: 'cliente',
             estado: formData.get('estado')
         };
-        
+
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
         submitButton.textContent = 'Creando...';
-        
+
         await apiRequest(CONFIG.ENDPOINTS.USUARIOS, {
             method: 'POST',
             body: JSON.stringify(clienteData)
         });
-        
+
         mostrarMensaje('Cliente creado exitosamente', 'success');
         form.closest('.modal-nuevo-cliente').remove();
-        
+
         // Invalidar cache y recargar datos
         CacheManager.invalidate('usuarios');
         CacheManager.invalidate('dashboard');
         await cargarClientes();
-        
+
     } catch (error) {
         console.error('Error creando cliente:', error);
-        
+
         // Manejar errores específicos
         let mensajeError = 'Error al crear el cliente';
-        
+
         if (error.message.includes('email')) {
             mensajeError = 'Ya existe un usuario con este email';
         } else if (error.message.includes('documento')) {
@@ -1517,9 +1524,9 @@ async function crearNuevoCliente(form) {
         } else {
             mensajeError = error.message;
         }
-        
+
         mostrarMensaje(mensajeError, 'error');
-        
+
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = false;
         submitButton.textContent = 'Crear Cliente';
@@ -1530,12 +1537,12 @@ async function crearNuevoCliente(form) {
 
 async function editarClienteReal(clienteId) {
     const operation = `editar-cliente-${clienteId}`;
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         const cliente = await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`);
-        
+
         const modal = createModal('modal-editar-cliente', `
             <div class="modal-header">
                 <h3>Editar Cliente</h3>
@@ -1580,13 +1587,13 @@ async function editarClienteReal(clienteId) {
                 </div>
             </form>
         `);
-        
+
         document.body.appendChild(modal);
-        
+
         const form = modal.querySelector('#form-editar-cliente');
-        form.addEventListener('submit', async function(e) {
+        form.addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             const formData = new FormData(e.target);
             const datosActualizados = {
                 nombre: formData.get('nombre'),
@@ -1595,24 +1602,24 @@ async function editarClienteReal(clienteId) {
                 documento: formData.get('documento'),
                 estado: formData.get('estado')
             };
-            
+
             try {
                 const submitButton = e.target.querySelector('button[type="submit"]');
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
-                
+
                 await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`, {
                     method: 'PUT',
                     body: JSON.stringify(datosActualizados)
                 });
-                
+
                 mostrarMensaje('Cliente actualizado exitosamente', 'success');
                 modal.remove();
-                
+
                 // Invalidar cache y recargar
                 CacheManager.invalidate('usuarios');
                 await cargarClientes();
-                
+
             } catch (error) {
                 console.error('Error actualizando cliente:', error);
                 mostrarMensaje('Error al actualizar el cliente: ' + error.message, 'error');
@@ -1620,7 +1627,7 @@ async function editarClienteReal(clienteId) {
                 submitButton.textContent = 'Guardar Cambios';
             }
         });
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -1630,24 +1637,24 @@ async function editarClienteReal(clienteId) {
 
 async function verClienteReal(clienteId) {
     const operation = `ver-cliente-${clienteId}`;
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         const [cliente, creditos, citas] = await Promise.allSettled([
             apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`),
             apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}/creditos`).catch(() => []),
             apiRequest(`${CONFIG.ENDPOINTS.CITAS}?usuario_id=${clienteId}`).catch(() => [])
         ]);
-        
+
         const clienteData = cliente.status === 'fulfilled' ? cliente.value : null;
         const creditosData = creditos.status === 'fulfilled' ? creditos.value : [];
         const citasData = citas.status === 'fulfilled' ? citas.value : [];
-        
+
         if (!clienteData) {
             throw new Error('No se pudo cargar la información del cliente');
         }
-        
+
         const modal = createModal('modal-ver-cliente', `
             <div class="modal-header">
                 <h3>Perfil del Cliente</h3>
@@ -1705,9 +1712,9 @@ async function verClienteReal(clienteId) {
                 <button onclick="this.closest('.modal-ver-cliente').remove()" class="btn btn-secondary">Cerrar</button>
             </div>
         `);
-        
+
         document.body.appendChild(modal);
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -1718,27 +1725,27 @@ async function verClienteReal(clienteId) {
 async function cambiarEstadoCliente(clienteId, estadoActual) {
     const nuevoEstado = estadoActual === 'activo' ? 'suspendido' : 'activo';
     const accion = nuevoEstado === 'activo' ? 'activar' : 'suspender';
-    
+
     if (!confirm(`¿Estás seguro de que quieres ${accion} este cliente?`)) return;
-    
+
     const operation = `cambiar-estado-${clienteId}`;
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`, {
             method: 'PUT',
             body: JSON.stringify({
                 estado: nuevoEstado
             })
         });
-        
+
         mostrarMensaje(`Cliente ${accion === 'activar' ? 'activado' : 'suspendido'} exitosamente`, 'success');
-        
+
         // Invalidar cache y recargar
         CacheManager.invalidate('usuarios');
         await cargarClientes();
-        
+
     } catch (error) {
         ErrorHandler.handle(error, operation);
     } finally {
@@ -1756,7 +1763,7 @@ function createModal(className, content) {
         background: rgba(0,0,0,0.5); display: flex; align-items: center; 
         justify-content: center; z-index: 10000; animation: fadeIn 0.3s ease;
     `;
-    
+
     const modalContent = document.createElement('div');
     modalContent.className = 'modal-content';
     modalContent.style.cssText = `
@@ -1765,25 +1772,25 @@ function createModal(className, content) {
         animation: slideIn 0.3s ease;
     `;
     modalContent.innerHTML = content;
-    
+
     modal.appendChild(modalContent);
-    
+
     // Cerrar modal al hacer click fuera
-    modal.addEventListener('click', function(e) {
+    modal.addEventListener('click', function (e) {
         if (e.target === modal) {
             modal.remove();
         }
     });
-    
+
     // Cerrar modal con ESC
-    const handleEscape = function(e) {
+    const handleEscape = function (e) {
         if (e.key === 'Escape') {
             modal.remove();
             document.removeEventListener('keydown', handleEscape);
         }
     };
     document.addEventListener('keydown', handleEscape);
-    
+
     return modal;
 }
 
@@ -1795,23 +1802,23 @@ function mostrarSeccionAdmin(seccionId) {
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
-        
+
         // Mostrar sección seleccionada
         const seccion = document.getElementById(seccionId);
         if (seccion) {
             seccion.classList.add('active');
         }
-        
+
         // Actualizar navegación
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
         });
-        
+
         const navItem = document.querySelector(`[onclick*="${seccionId}"]`);
         if (navItem) {
             navItem.classList.add('active');
         }
-        
+
         // Cargar datos específicos de la sección
         switch (seccionId) {
             case 'dashboard':
@@ -1830,7 +1837,7 @@ function mostrarSeccionAdmin(seccionId) {
                 cargarReportes();
                 break;
         }
-        
+
     } catch (error) {
         console.error('Error mostrando sección:', error);
     }
@@ -1844,7 +1851,7 @@ function cargarInformacionAdmin() {
             emailSidebar: document.getElementById('email-admin-sidebar'),
             adminNombre: document.getElementById('admin-nombre')
         };
-        
+
         if (elementos.nombreSidebar) elementos.nombreSidebar.textContent = user.nombre;
         if (elementos.emailSidebar) elementos.emailSidebar.textContent = user.email;
         if (elementos.adminNombre) elementos.adminNombre.textContent = user.nombre;
@@ -1885,24 +1892,24 @@ function verComprobante(pagoId) {
 
 // ============ INICIALIZACIÓN OPTIMIZADA ============
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('🚀 Inicializando panel administrativo optimizado...');
-    
+
     // Verificar autenticación y permisos
     if (!auth.requireAuth() || !auth.requireAdmin()) {
         console.error('❌ Usuario no autorizado');
         return;
     }
-    
+
     // Configurar eventos
     configurarEventosAdmin();
-    
+
     // Cargar información del usuario
     cargarInformacionAdmin();
-    
+
     // Cargar dashboard inicial
     cargarDashboard();
-    
+
     // Configurar auto-refresh cada 5 minutos
     setInterval(() => {
         if (document.visibilityState === 'visible') {
@@ -1910,12 +1917,12 @@ document.addEventListener('DOMContentLoaded', function() {
             cargarDashboard();
         }
     }, 5 * 60 * 1000);
-    
+
     console.log('✅ Panel administrativo optimizado inicializado correctamente');
 });
 
 // Limpiar cache cuando se cierra la página
-window.addEventListener('beforeunload', function() {
+window.addEventListener('beforeunload', function () {
     CacheManager.clear();
 });
 
@@ -1924,7 +1931,7 @@ window.addEventListener('beforeunload', function() {
 
 function nuevaCitaAdmin() {
     console.log('🆕 Abriendo modal para nueva cita desde admin...');
-    
+
     const modal = document.createElement('div');
     modal.className = 'modal-nueva-cita-admin';
     modal.style.cssText = `
@@ -1932,7 +1939,7 @@ function nuevaCitaAdmin() {
         background: rgba(0,0,0,0.5); display: flex; align-items: center; 
         justify-content: center; z-index: 10000;
     `;
-    
+
     modal.innerHTML = `
         <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -2006,16 +2013,16 @@ function nuevaCitaAdmin() {
             </form>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     // Cargar datos para los selects
     cargarClientesParaCitaAdmin();
     cargarServiciosParaCitaAdmin();
-    
+
     // Configurar evento de submit
     const form = modal.querySelector('#form-nueva-cita-admin');
-    form.addEventListener('submit', async function(e) {
+    form.addEventListener('submit', async function (e) {
         e.preventDefault();
         await crearNuevaCitaAdmin(e.target);
     });
@@ -2025,10 +2032,10 @@ async function cargarClientesParaCitaAdmin() {
     try {
         const usuarios = await apiRequest(CONFIG.ENDPOINTS.ADMIN_USUARIOS_COMPLETO);
         const select = document.getElementById('select-cliente-admin');
-        
+
         if (select) {
             select.innerHTML = '<option value="">Seleccionar cliente...</option>';
-            
+
             usuarios.forEach(usuario => {
                 const option = document.createElement('option');
                 option.value = usuario.id;
@@ -2045,21 +2052,21 @@ async function cargarClientesParaCitaAdmin() {
 async function cargarServiciosParaCitaAdmin() {
     try {
         console.log('🔄 Cargando servicios reales de la BD...');
-        
+
         const servicios = await apiRequest('/servicios');
         const select = document.getElementById('select-servicio-admin');
-        
+
         console.log('✅ Servicios recibidos de la BD:', servicios);
         console.log('📊 Cantidad de servicios:', servicios?.length || 0);
-        
+
         if (!select) {
             console.error('❌ No se encontró el select con id "select-servicio-admin"');
             return;
         }
-        
+
         // Limpiar select
         select.innerHTML = '<option value="">Seleccionar servicio...</option>';
-        
+
         if (servicios && Array.isArray(servicios) && servicios.length > 0) {
             servicios.forEach((servicio, index) => {
                 console.log(`📋 Procesando servicio ${index + 1}:`, {
@@ -2068,31 +2075,31 @@ async function cargarServiciosParaCitaAdmin() {
                     nombre: servicio.nombre,
                     precio: servicio.precio
                 });
-                
+
                 const option = document.createElement('option');
                 option.value = servicio.id;
                 option.textContent = `${servicio.codigo} - ${servicio.nombre} - ${formatearPrecio(servicio.precio)}`;
                 select.appendChild(option);
             });
-            
+
             console.log(`✅ ${servicios.length} servicios cargados exitosamente en el select`);
-            
+
             // Verificar que las opciones se agregaron
             console.log('🔍 Opciones en el select:', select.children.length);
         } else {
             console.warn('⚠️ No se recibieron servicios o array vacío:', servicios);
             select.innerHTML = '<option value="">No hay servicios disponibles</option>';
         }
-        
+
     } catch (error) {
         console.error('❌ Error completo cargando servicios:', error);
         console.error('❌ Stack trace:', error.stack);
-        
+
         const select = document.getElementById('select-servicio-admin');
         if (select) {
             select.innerHTML = `<option value="">Error: ${error.message}</option>`;
         }
-        
+
         mostrarMensaje('Error cargando servicios: ' + error.message, 'error');
     }
 }
@@ -2102,12 +2109,12 @@ async function cargarServiciosParaCitaAdmin() {
 
 async function crearNuevaCitaAdmin(form) {
     const operation = 'crear-cita-admin';
-    
+
     try {
         LoadingManager.start(operation);
-        
+
         const formData = new FormData(form);
-        
+
         const citaData = {
             usuario_id: parseInt(formData.get('usuario_id')),
             servicio_id: parseInt(formData.get('servicio_id')),
@@ -2117,60 +2124,82 @@ async function crearNuevaCitaAdmin(form) {
             estado: formData.get('estado'),
             comentarios_admin: formData.get('comentarios_admin')
         };
-        
+
         // Validaciones
         if (!citaData.usuario_id) {
             mostrarMensaje('Por favor selecciona un cliente', 'error');
             return;
         }
-        
+
         if (!citaData.servicio_id) {
             mostrarMensaje('Por favor selecciona un servicio', 'error');
             return;
         }
-        
+
         console.log('📤 Enviando datos de cita:', citaData);
-        
+
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
         submitButton.textContent = 'Agendando...';
-        
+
         const response = await apiRequest(CONFIG.ENDPOINTS.AGENDAR_CITA, {
             method: 'POST',
             body: JSON.stringify(citaData)
         });
-        
+
         console.log('✅ Cita creada exitosamente:', response);
-        
+
         mostrarMensaje('Cita agendada exitosamente', 'success');
         form.closest('.modal-nueva-cita-admin').remove();
-        
+
         // CORREGIDO: Invalidar cache y recargar datos
         CacheManager.clear(); // Limpiar todo el cache
-        
+
         // Recargar todas las secciones relevantes
         await Promise.all([
             cargarDashboard(),
             cargarCitasPorPeriodo()
         ]);
-        
+
         console.log('✅ Datos recargados después de crear cita');
-        
+
     } catch (error) {
         console.error('❌ Error creando cita:', error);
-        
+
         // Manejar el error específico de créditos
         if (error.message.includes('créditos disponibles')) {
             mostrarMensaje('El cliente no tiene créditos disponibles para este servicio', 'error');
         } else {
             mostrarMensaje('Error al agendar la cita: ' + error.message, 'error');
         }
-        
+
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = false;
         submitButton.textContent = 'Agendar Cita';
     } finally {
         LoadingManager.end(operation);
+    }
+}
+
+function configurarFiltroCalendario() {
+    const calendario = document.getElementById('calendario-filtro');
+    if (calendario) {
+        // NO establecer fecha por defecto - empezar sin filtro
+
+        // Configurar evento de cambio
+        calendario.addEventListener('change', function () {
+            const fechaSeleccionada = this.value;
+            if (fechaSeleccionada) {
+                console.log('📅 Fecha seleccionada:', fechaSeleccionada);
+            } else {
+                console.log('📅 Filtro de fecha limpiado');
+            }
+            cargarCitasPorPeriodo();
+        });
+
+        console.log('✅ Filtro de calendario configurado');
+    } else {
+        console.warn('⚠️ No se encontró el elemento calendario-filtro');
     }
 }
 

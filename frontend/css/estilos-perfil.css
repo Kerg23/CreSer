@@ -1360,3 +1360,116 @@ main {
     transform: translateY(-1px) !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
 }
+
+
+/* ============ FILTRO DE CALENDARIO ÚNICO ============ */
+.filtro-calendario-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #dee2e6;
+    flex-wrap: wrap;
+}
+
+.filtro-calendario-container label {
+    font-weight: 600;
+    color: var(--color-secondary);
+    font-size: 14px;
+    white-space: nowrap;
+    margin: 0;
+}
+
+.filtro-calendario {
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    transition: all 0.3s ease;
+    min-width: 160px;
+}
+
+.filtro-calendario:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(78, 195, 177, 0.1);
+}
+
+.btn-filtrar {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-limpiar {
+    background: var(--color-text-light);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-filtrar:hover {
+    background: var(--color-secondary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn-limpiar:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Responsive para filtro único */
+@media (max-width: 768px) {
+    .filtro-calendario-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        text-align: center;
+    }
+    
+    .filtro-calendario {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .btn-filtrar,
+    .btn-limpiar {
+        width: 100%;
+        margin: 0;
+    }
+}
+
+/* Ajustar header-actions */
+.section-header .header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 15px;
+}
+
+@media (max-width: 768px) {
+    .section-header .header-actions {
+        align-items: stretch;
+    }
+}
