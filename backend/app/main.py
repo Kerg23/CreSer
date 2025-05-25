@@ -19,7 +19,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORREGIDO: CORS específico sin wildcard cuando se usan credentials
+# CORS específico sin wildcard cuando se usan credentials
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -31,7 +31,7 @@ app.add_middleware(
         "http://127.0.0.1:8080",
         "http://localhost:5173",
         "http://127.0.0.1:5173"
-    ],  # NO usar "*" con credentials
+    ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=[
@@ -55,7 +55,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"URL: {request.url}")
     logger.error(f"Traceback: {traceback.format_exc()}")
     
-    # CORREGIDO: Headers CORS específicos en respuestas de error
+    # Headers CORS específicos en respuestas de error
     origin = request.headers.get("origin")
     allowed_origins = [
         "http://localhost:3000",
@@ -109,11 +109,11 @@ try:
     
     # Controladores básicos
     from app.controllers.auth_controller import router as auth_router
-    from app.controllers.usuario_controller import router as usuario_router
+    from app.controllers.usuario_controller import router as usuario_router  # CORREGIDO
     from app.controllers.cita_controller import router as cita_router
     
     app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
-    app.include_router(usuario_router, prefix="/api/usuarios", tags=["Usuarios"])
+    app.include_router(usuario_router, prefix="/api/usuarios", tags=["Usuarios"])  # CORREGIDO
     app.include_router(cita_router, prefix="/api/citas", tags=["Citas"])
     
     logger.info("Controladores básicos cargados")
@@ -152,15 +152,6 @@ try:
                     "servicio_nombre": "Psicoterapia Individual",
                     "modalidad": "presencial",
                     "estado": "confirmada"
-                },
-                {
-                    "id": 2,
-                    "hora": "14:00",
-                    "usuario_nombre": "Carlos Rodríguez",
-                    "usuario_telefono": "+57 301 987 6543",
-                    "servicio_nombre": "Valoración Psicológica",
-                    "modalidad": "virtual",
-                    "estado": "agendada"
                 }
             ]
         
@@ -174,14 +165,6 @@ try:
                     "concepto": "Paquete 4 sesiones",
                     "estado": "pendiente",
                     "created_at": "2025-05-24T10:30:00"
-                },
-                {
-                    "id": 2,
-                    "nombre_pagador": "Carlos Rodríguez", 
-                    "monto": 80000,
-                    "concepto": "Valoración Individual",
-                    "estado": "aprobado",
-                    "created_at": "2025-05-23T15:45:00"
                 }
             ]
             
@@ -201,22 +184,8 @@ try:
                     "estado": "activo",
                     "creditos_disponibles": 3,
                     "total_citas": 5
-                },
-                {
-                    "id": 2,
-                    "nombre": "Carlos Rodríguez",
-                    "email": "carlos.rodriguez@email.com", 
-                    "telefono": "+57 301 987 6543",
-                    "tipo": "cliente",
-                    "estado": "activo",
-                    "creditos_disponibles": 1,
-                    "total_citas": 2
                 }
             ]
-        
-        @admin_router.get("/test")
-        async def test_fallback():
-            return {"message": "Admin fallback funcionando"}
         
         app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
         logger.info("Admin controller fallback creado")
