@@ -24,11 +24,32 @@ class Usuario(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    # SOLO relación que funciona
+    # Relaciones
     citas = relationship("Cita", back_populates="usuario", lazy="select")
-    pagos = relationship("Pago", back_populates="usuario", foreign_keys="Pago.usuario_id")  # AGREGADO
-    pagos_aprobados = relationship("Pago", back_populates="aprobador", foreign_keys="Pago.aprobado_por")  # AGREGADO
+    pagos = relationship("Pago", back_populates="usuario", foreign_keys="Pago.usuario_id")
+    pagos_aprobados = relationship("Pago", back_populates="aprobador", foreign_keys="Pago.aprobado_por")
+    
     def to_dict(self):
+        """Convertir modelo a diccionario con manejo seguro de fechas"""
+        
+        # Función auxiliar para manejar fechas de forma segura
+        def safe_isoformat(date_obj):
+            if date_obj is None:
+                return None
+            try:
+                # Si es un objeto date o datetime, usar isoformat
+                if hasattr(date_obj, 'isoformat'):
+                    return date_obj.isoformat()
+                # Si ya es string, devolverlo tal como está
+                elif isinstance(date_obj, str):
+                    return date_obj
+                # Fallback: convertir a string
+                else:
+                    return str(date_obj)
+            except Exception as e:
+                print(f"Error formateando fecha {date_obj}: {e}")
+                return str(date_obj) if date_obj else None
+        
         return {
             'id': self.id,
             'nombre': self.nombre,
@@ -36,11 +57,12 @@ class Usuario(Base):
             'telefono': self.telefono,
             'documento': self.documento,
             'direccion': self.direccion,
-            'fecha_nacimiento': self.fecha_nacimiento.isoformat() if self.fecha_nacimiento else None,
+            'fecha_nacimiento': safe_isoformat(self.fecha_nacimiento),  # CORREGIDO
             'genero': self.genero,
             'avatar': self.avatar,
             'tipo': self.tipo,
             'estado': self.estado,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            'configuracion': self.configuracion,  # AGREGADO: Campo faltante
+            'created_at': safe_isoformat(self.created_at),  # CORREGIDO
+            'updated_at': safe_isoformat(self.updated_at)   # CORREGIDO
         }

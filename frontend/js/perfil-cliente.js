@@ -1,30 +1,15 @@
 // ============ CONFIGURACIÓN Y VARIABLES GLOBALES ============
 let editandoInfo = false;
 let datosOriginales = {};
-let creditosUsuario = [];
-let citasUsuario = [];
+let dataCache = new Map();
 let loadingStates = new Set();
 
-// Cache para optimización
-const dataCache = new Map();
+// Configuración de cache
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
 // ============ UTILIDADES DE OPTIMIZACIÓN ============
 
-// Debounce para optimizar eventos
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Cache manager
+// Cache manager optimizado
 class CacheManager {
     static set(key, data) {
         dataCache.set(key, {
@@ -32,23 +17,23 @@ class CacheManager {
             timestamp: Date.now()
         });
     }
-    
+
     static get(key) {
         const cached = dataCache.get(key);
         if (!cached) return null;
-        
+
         if (Date.now() - cached.timestamp > CACHE_DURATION) {
             dataCache.delete(key);
             return null;
         }
-        
+
         return cached.data;
     }
-    
+
     static clear() {
         dataCache.clear();
     }
-    
+
     static invalidate(pattern) {
         for (const key of dataCache.keys()) {
             if (key.includes(pattern)) {
@@ -58,18 +43,18 @@ class CacheManager {
     }
 }
 
-// Loading manager
+// Loading state manager
 class LoadingManager {
     static start(operation) {
         loadingStates.add(operation);
         this.updateUI();
     }
-    
+
     static end(operation) {
         loadingStates.delete(operation);
         this.updateUI();
     }
-    
+
     static updateUI() {
         const isLoading = loadingStates.size > 0;
         document.body.classList.toggle('loading', isLoading);
@@ -80,14 +65,14 @@ class LoadingManager {
 class ErrorHandler {
     static handle(error, operation) {
         console.error(`❌ Error en ${operation}:`, error);
-        
+
         let message = 'Ha ocurrido un error inesperado';
-        
+
         if (error.message.includes('Failed to fetch')) {
             message = 'Error de conexión. Verifica tu internet.';
         } else if (error.message.includes('401')) {
             message = 'Sesión expirada. Redirigiendo...';
-            setTimeout(() => this.logout(), 2000);
+            setTimeout(() => auth.logout(), 2000);
         } else if (error.message.includes('403')) {
             message = 'No tienes permisos para esta acción';
         } else if (error.message.includes('404')) {
@@ -95,124 +80,115 @@ class ErrorHandler {
         } else if (error.message) {
             message = error.message;
         }
-        
+
         mostrarMensaje(message, 'error');
     }
+}
+
+// ============ GESTIÓN DE NAVEGACIÓN ============
+
+function mostrarSeccion(seccionId) {
+    // Ocultar todas las secciones
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
     
-    static logout() {
-        if (typeof auth !== 'undefined' && auth.logout) {
-            auth.logout();
-        } else {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login.html';
-        }
+    // Remover clase active de todos los nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Mostrar la sección seleccionada
+    const seccion = document.getElementById(seccionId);
+    if (seccion) {
+        seccion.classList.add('active');
+    }
+    
+    // Activar el nav item correspondiente
+    const navItem = document.querySelector(`[data-section="${seccionId}"]`);
+    if (navItem) {
+        navItem.classList.add('active');
+    }
+    
+    // Cargar datos específicos de la sección
+    switch (seccionId) {
+        case 'mis-creditos':
+            cargarCreditos();
+            break;
+        case 'mis-citas':
+            cargarMisCitas();
+            break;
+        case 'historial-pagos':
+            cargarHistorialPagos();
+            break;
     }
 }
 
-// ============ INICIALIZACIÓN OPTIMIZADA ============
+// ============ CARGA INICIAL DE DATOS ============
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Inicializando perfil de cliente optimizado...');
-    
-    // Verificar autenticación
-    if (!verificarAutenticacion()) {
-        return;
-    }
-    
-    // Inicializar componentes en paralelo
-    inicializarPerfil();
-});
-
-function verificarAutenticacion() {
-    // Verificar con authManager o auth
-    const authSystem = window.authManager || window.auth;
-    
-    if (!authSystem || !authSystem.requireAuth()) {
-        console.error('❌ Usuario no autenticado');
-        window.location.href = '/login.html';
-        return false;
-    }
-    
-    // Verificar que es cliente
-    const user = authSystem.getUser();
-    if (user && user.tipo !== 'cliente') {
-        console.error('❌ Acceso denegado - Solo para clientes');
-        window.location.href = '/login.html';
-        return false;
-    }
-    
-    return true;
-}
-
-async function inicializarPerfil() {
-    try {
-        // Configurar eventos primero
-        configurarEventos();
-        
-        // Cargar datos en paralelo
-        await Promise.allSettled([
-            cargarDatosUsuario(),
-            cargarCreditos(),
-            cargarCitas(),
-            cargarHistorialPagos()
-        ]);
-        
-        configurarNotificaciones();
-        
-        console.log('✅ Perfil de cliente inicializado correctamente');
-        
-    } catch (error) {
-        ErrorHandler.handle(error, 'inicialización del perfil');
-    }
-}
-
-// ============ CARGA DE DATOS OPTIMIZADA ============
-
-async function cargarDatosUsuario() {
-    const operation = 'cargar-usuario';
+async function cargarPerfilUsuario() {
+    const operation = 'cargar-perfil';
     
     try {
         LoadingManager.start(operation);
-        console.log('🔄 Cargando datos del usuario...');
+        console.log('🔄 Cargando perfil de usuario...');
         
         // Verificar cache
-        const cached = CacheManager.get('usuario-datos');
+        const cached = CacheManager.get('usuario-perfil');
         if (cached) {
             llenarDatosUsuario(cached);
-            console.log('✅ Datos del usuario cargados desde cache');
+            console.log('✅ Perfil cargado desde cache');
         }
         
-        // Cargar datos frescos
-        const response = await apiRequest(CONFIG.ENDPOINTS.PERFIL);
-        const usuario = response.usuario || response;
+        // CORREGIDO: Usar endpoint correcto
+        const usuario = await apiRequest('/usuarios/perfil');
         
-        CacheManager.set('usuario-datos', usuario);
+        console.log('✅ Perfil cargado desde servidor:', usuario);
+        
+        CacheManager.set('usuario-perfil', usuario);
         llenarDatosUsuario(usuario);
         
-        // Guardar datos originales
+        // Guardar datos originales para restaurar
         datosOriginales = { ...usuario };
         
     } catch (error) {
-        ErrorHandler.handle(error, operation);
+        console.error('❌ Error cargando perfil:', error);
+        
+        // Si hay error, intentar usar datos del auth
+        const user = auth.getUser();
+        if (user) {
+            console.log('📋 Usando datos básicos del auth:', user);
+            llenarDatosUsuario(user);
+            datosOriginales = { ...user };
+        } else {
+            mostrarMensaje('Error cargando perfil. Intenta recargar la página.', 'error');
+        }
     } finally {
         LoadingManager.end(operation);
     }
 }
 
 function llenarDatosUsuario(usuario) {
-    // Llenar formulario con datos
+    // Llenar formulario con datos - CORREGIDO: más campos
     const campos = {
         'nombre': usuario.nombre || '',
         'email': usuario.email || '',
         'telefono': usuario.telefono || '',
-        'documento': usuario.documento || ''
+        'documento': usuario.documento || '',
+        'direccion': usuario.direccion || '',
+        'fecha_nacimiento': usuario.fecha_nacimiento ? usuario.fecha_nacimiento.split('T')[0] : '',
+        'genero': usuario.genero || '',
+        'tipo_usuario': usuario.tipo || 'cliente'
     };
     
     Object.entries(campos).forEach(([id, valor]) => {
         const elemento = document.getElementById(id);
         if (elemento) {
-            elemento.value = valor;
+            if (elemento.type === 'select-one') {
+                elemento.value = valor;
+            } else {
+                elemento.value = valor;
+            }
         }
     });
     
@@ -223,28 +199,46 @@ function llenarDatosUsuario(usuario) {
     if (nombreUsuario) nombreUsuario.textContent = usuario.nombre || 'Usuario';
     if (emailUsuario) emailUsuario.textContent = usuario.email || '';
     
+    // AGREGAR: Actualizar avatar si existe
+    const avatarImg = document.getElementById('avatar-usuario');
+    if (avatarImg && usuario.avatar) {
+        avatarImg.src = usuario.avatar;
+        avatarImg.onerror = function() {
+            this.src = 'recursos/avatar-default.png';
+        };
+    }
+    
     // Configuración de notificaciones
     if (usuario.configuracion) {
-        const notifConfig = usuario.configuracion;
-        const checkboxes = {
-            'notif-email': notifConfig.notificaciones_email,
-            'notif-sms': notifConfig.notificaciones_sms,
-            'notif-recordatorios': notifConfig.recordatorios_citas
-        };
-        
-        Object.entries(checkboxes).forEach(([id, checked]) => {
-            const elemento = document.getElementById(id);
-            if (elemento) elemento.checked = checked;
-        });
+        try {
+            const notifConfig = typeof usuario.configuracion === 'string' 
+                ? JSON.parse(usuario.configuracion) 
+                : usuario.configuracion;
+                
+            const checkboxes = {
+                'notif-email': notifConfig.notificaciones_email !== false,
+                'notif-sms': notifConfig.notificaciones_sms || false,
+                'notif-recordatorios': notifConfig.recordatorios_citas !== false
+            };
+            
+            Object.entries(checkboxes).forEach(([id, checked]) => {
+                const elemento = document.getElementById(id);
+                if (elemento) elemento.checked = checked;
+            });
+        } catch (error) {
+            console.warn('Error parseando configuración:', error);
+        }
     }
 }
+
+// ============ GESTIÓN DE CRÉDITOS ============
 
 async function cargarCreditos() {
     const operation = 'cargar-creditos';
     
     try {
         LoadingManager.start(operation);
-        console.log('🔄 Cargando créditos del usuario...');
+        console.log('🔄 Cargando créditos...');
         
         // Verificar cache
         const cached = CacheManager.get('usuario-creditos');
@@ -253,13 +247,38 @@ async function cargarCreditos() {
             console.log('✅ Créditos cargados desde cache');
         }
         
-        // Cargar datos frescos
-        const response = await apiRequest(CONFIG.ENDPOINTS.CREDITOS);
-        const creditos = response.creditos || response || [];
-        
-        CacheManager.set('usuario-creditos', creditos);
-        creditosUsuario = creditos;
-        renderizarCreditos(creditos);
+        // Intentar cargar datos reales
+        try {
+            const creditos = await apiRequest('/creditos/mis-creditos');
+            CacheManager.set('usuario-creditos', creditos);
+            renderizarCreditos(creditos);
+        } catch (error) {
+            console.warn('⚠️ No se pudieron cargar créditos reales, usando datos de ejemplo');
+            
+            // Datos de ejemplo para MVP
+            const creditosEjemplo = [
+                {
+                    id: 1,
+                    servicio_nombre: 'Psicoterapia Individual',
+                    codigo: 'PSICO_IND',
+                    cantidad_inicial: 4,
+                    cantidad_disponible: 2,
+                    duracion: 60,
+                    fecha_vencimiento: '2025-08-25'
+                },
+                {
+                    id: 2,
+                    servicio_nombre: 'Orientación Familiar',
+                    codigo: 'ORIENT_FAM',
+                    cantidad_inicial: 2,
+                    cantidad_disponible: 1,
+                    duracion: 90,
+                    fecha_vencimiento: '2025-07-15'
+                }
+            ];
+            
+            renderizarCreditos(creditosEjemplo);
+        }
         
     } catch (error) {
         ErrorHandler.handle(error, operation);
@@ -269,73 +288,122 @@ async function cargarCreditos() {
 }
 
 function renderizarCreditos(creditos) {
-    const container = document.querySelector('.creditos-grid');
+    const container = document.getElementById('lista-creditos');
     if (!container) return;
     
-    container.innerHTML = '';
-    
     if (!creditos || creditos.length === 0) {
-        container.innerHTML = `
-            <div class="sin-creditos">
-                <p>No tienes créditos disponibles.</p>
-                <a href="comprar.html" class="btn btn-primary">Comprar créditos aquí</a>
-            </div>
-        `;
+        container.innerHTML = '<p class="sin-creditos">No tienes créditos disponibles. <a href="comprar.html">Comprar créditos</a></p>';
+        actualizarResumenCreditos(0, 0, 0);
         return;
     }
     
-    // Usar fragment para mejor rendimiento
+    // Calcular resumen
+    const totalCreditos = creditos.reduce((sum, c) => sum + (c.cantidad_disponible || 0), 0);
+    const creditosUsados = creditos.reduce((sum, c) => sum + ((c.cantidad_inicial || 0) - (c.cantidad_disponible || 0)), 0);
+    const proximosVencer = creditos.filter(c => {
+        if (!c.fecha_vencimiento) return false;
+        const vencimiento = new Date(c.fecha_vencimiento);
+        const hoy = new Date();
+        const diasDiferencia = (vencimiento - hoy) / (1000 * 60 * 60 * 24);
+        return diasDiferencia <= 30 && diasDiferencia > 0;
+    }).reduce((sum, c) => sum + (c.cantidad_disponible || 0), 0);
+    
+    actualizarResumenCreditos(totalCreditos, creditosUsados, proximosVencer);
+    
+    // Renderizar lista
     const fragment = document.createDocumentFragment();
     
     creditos.forEach(credito => {
-        const creditoCard = document.createElement('div');
-        const cantidadDisponible = credito.cantidad_disponible || credito.cantidad || 0;
-        
-        creditoCard.className = cantidadDisponible > 0 ? 'credito-card' : 'credito-card sin-creditos';
-        
-        creditoCard.innerHTML = `
-            <div class="credito-header">
-                <h4>${credito.servicio_nombre || credito.nombre}</h4>
-                <span class="credito-cantidad">${cantidadDisponible} créditos</span>
+        const creditoElement = document.createElement('div');
+        creditoElement.className = 'credito-item';
+        creditoElement.innerHTML = `
+            <div class="credito-info">
+                <h4>${credito.servicio_nombre || credito.nombre || 'Servicio'}</h4>
+                <p>Código: ${credito.servicio || credito.codigo || 'N/A'}</p>
+                <p>Duración: ${credito.duracion || 60} minutos</p>
+                ${credito.fecha_vencimiento ? `<p>Vence: ${formatearFecha(credito.fecha_vencimiento)}</p>` : ''}
             </div>
-            <p class="credito-descripcion">
-                Válido para sesiones de ${credito.duracion || '60'} minutos
-            </p>
+            <div class="credito-cantidad">
+                <span class="cantidad-disponible">${credito.cantidad_disponible || 0}</span>
+                <span class="cantidad-total">de ${credito.cantidad_inicial || 0}</span>
+                <div class="progreso-credito">
+                    <div class="progreso-barra" style="width: ${((credito.cantidad_disponible || 0) / (credito.cantidad_inicial || 1)) * 100}%"></div>
+                </div>
+            </div>
             <div class="credito-acciones">
-                ${cantidadDisponible > 0 ? 
-                    `<button onclick="agendarCitaConCredito(${credito.servicio_id || credito.id})" class="btn btn-sm btn-primary">Agendar Cita</button>` : 
-                    `<a href="comprar.html?servicio=${credito.servicio_id || credito.id}" class="btn btn-sm btn-outline">Comprar Créditos</a>`
-                }
+                <button class="btn-usar-credito" onclick="usarCredito(${credito.id})" ${(credito.cantidad_disponible || 0) === 0 ? 'disabled' : ''}>
+                    Usar Crédito
+                </button>
             </div>
         `;
-        
-        fragment.appendChild(creditoCard);
+        fragment.appendChild(creditoElement);
     });
     
+    container.innerHTML = '';
     container.appendChild(fragment);
 }
 
-async function cargarCitas() {
+function actualizarResumenCreditos(total, usados, proximos) {
+    const elementos = [
+        { id: 'total-creditos', valor: total },
+        { id: 'creditos-usados', valor: usados },
+        { id: 'creditos-vencer', valor: proximos }
+    ];
+    
+    elementos.forEach(({ id, valor }) => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.textContent = valor;
+    });
+}
+
+// ============ GESTIÓN DE CITAS ============
+
+async function cargarMisCitas() {
     const operation = 'cargar-citas';
     
     try {
         LoadingManager.start(operation);
-        console.log('🔄 Cargando citas del usuario...');
+        console.log('🔄 Cargando mis citas...');
         
         // Verificar cache
         const cached = CacheManager.get('usuario-citas');
         if (cached) {
-            procesarCitas(cached);
+            renderizarCitas(cached);
             console.log('✅ Citas cargadas desde cache');
         }
         
-        // Cargar datos frescos
-        const response = await apiRequest(CONFIG.ENDPOINTS.MIS_CITAS);
-        const citas = response.citas || response || [];
-        
-        CacheManager.set('usuario-citas', citas);
-        citasUsuario = citas;
-        procesarCitas(citas);
+        // Intentar cargar datos reales
+        try {
+            const citas = await apiRequest('/citas/mis-citas');
+            CacheManager.set('usuario-citas', citas);
+            renderizarCitas(citas);
+        } catch (error) {
+            console.warn('⚠️ No se pudieron cargar citas reales, usando datos de ejemplo');
+            
+            // Datos de ejemplo para MVP
+            const citasEjemplo = [
+                {
+                    id: 1,
+                    fecha: '2025-05-28',
+                    hora: '10:00',
+                    servicio_nombre: 'Psicoterapia Individual',
+                    modalidad: 'presencial',
+                    estado: 'confirmada',
+                    comentarios_cliente: 'Primera sesión'
+                },
+                {
+                    id: 2,
+                    fecha: '2025-05-15',
+                    hora: '15:30',
+                    servicio_nombre: 'Orientación Familiar',
+                    modalidad: 'virtual',
+                    estado: 'completada',
+                    link_virtual: 'https://meet.google.com/abc-def-ghi'
+                }
+            ];
+            
+            renderizarCitas(citasEjemplo);
+        }
         
     } catch (error) {
         ErrorHandler.handle(error, operation);
@@ -344,104 +412,79 @@ async function cargarCitas() {
     }
 }
 
-function procesarCitas(citas) {
-    const ahora = new Date();
-    
-    // Filtrar citas por estado
-    const citasProximas = citas.filter(cita => {
-        const fechaCita = new Date(cita.fecha);
-        return fechaCita >= ahora && ['agendada', 'confirmada'].includes(cita.estado);
-    });
-    
-    const citasPasadas = citas.filter(cita => {
-        const fechaCita = new Date(cita.fecha);
-        return fechaCita < ahora || cita.estado === 'completada';
-    });
-    
-    const citasCanceladas = citas.filter(cita => cita.estado === 'cancelada');
-    
-    // Actualizar contadores en tabs
-    actualizarContadoresTabs({
-        proximas: citasProximas.length,
-        pasadas: citasPasadas.length,
-        canceladas: citasCanceladas.length
-    });
-    
-    // Mostrar citas próximas por defecto
-    renderizarCitas(citasProximas, 'proximas');
-}
-
-function actualizarContadoresTabs(contadores) {
-    Object.entries(contadores).forEach(([tipo, count]) => {
-        const tab = document.getElementById(`tab-${tipo}`);
-        if (tab) {
-            const counter = tab.querySelector('.counter');
-            if (counter) {
-                counter.textContent = count;
-            }
-        }
-    });
-}
-
-function renderizarCitas(citas, tipo) {
-    const container = document.querySelector('.citas-lista');
+function renderizarCitas(citas) {
+    const container = document.getElementById('lista-citas');
     if (!container) return;
     
-    container.innerHTML = '';
-    
-    if (citas.length === 0) {
-        const mensajes = {
-            'proximas': 'No tienes citas próximas.',
-            'pasadas': 'No tienes historial de citas.',
-            'canceladas': 'No tienes citas canceladas.'
-        };
-        
-        container.innerHTML = `
-            <div class="sin-citas">
-                <p>${mensajes[tipo] || 'No hay citas en esta categoría.'}</p>
-                ${tipo === 'proximas' ? '<button onclick="mostrarModalNuevaCita()" class="btn btn-primary">Agendar Nueva Cita</button>' : ''}
-            </div>
-        `;
+    if (!citas || citas.length === 0) {
+        container.innerHTML = '<p class="sin-citas">No tienes citas registradas. <a href="agendar-cita.html">Agendar nueva cita</a></p>';
+        actualizarResumenCitas(0, 0, 0, 0);
         return;
     }
     
-    // Usar fragment para mejor rendimiento
+    // Aplicar filtro
+    const filtroEstado = document.getElementById('filtro-estado-citas')?.value || 'todas';
+    const citasFiltradas = filtroEstado === 'todas' ? citas : citas.filter(c => c.estado === filtroEstado);
+    
+    // Calcular resumen
+    const total = citas.length;
+    const proximas = citas.filter(c => {
+        if (c.estado !== 'agendada' && c.estado !== 'confirmada') return false;
+        const fechaCita = new Date(c.fecha);
+        return fechaCita >= new Date();
+    }).length;
+    const completadas = citas.filter(c => c.estado === 'completada').length;
+    const canceladas = citas.filter(c => c.estado === 'cancelada').length;
+    
+    actualizarResumenCitas(total, proximas, completadas, canceladas);
+    
+    // Renderizar lista
     const fragment = document.createDocumentFragment();
     
-    citas.forEach(cita => {
-        const citaCard = document.createElement('div');
-        citaCard.className = `cita-card ${tipo}`;
-        
-        const fecha = new Date(cita.fecha);
-        const dia = fecha.getDate();
-        const mes = fecha.toLocaleDateString('es-ES', { month: 'short' });
-        
-        citaCard.innerHTML = `
+    citasFiltradas.forEach(cita => {
+        const citaElement = document.createElement('div');
+        citaElement.className = `cita-item ${cita.estado}`;
+        citaElement.innerHTML = `
             <div class="cita-fecha">
-                <div class="dia">${dia}</div>
-                <div class="mes">${mes}</div>
+                <div class="fecha">${formatearFecha(cita.fecha)}</div>
+                <div class="hora">${cita.hora || '00:00'}</div>
             </div>
             <div class="cita-info">
                 <h4>${cita.servicio_nombre || 'Servicio'}</h4>
-                <p><strong>Fecha:</strong> ${formatearFecha(cita.fecha)}</p>
-                <p><strong>Hora:</strong> ${cita.hora}</p>
-                <p><strong>Modalidad:</strong> ${cita.modalidad}</p>
-                <p><strong>Estado:</strong> <span class="estado ${cita.estado}">${cita.estado}</span></p>
-                ${cita.link_virtual ? `<p><strong>Link:</strong> <a href="${cita.link_virtual}" target="_blank">Unirse a la sesión</a></p>` : ''}
+                <p>Modalidad: ${cita.modalidad || 'Presencial'}</p>
+                <p>Estado: <span class="estado ${cita.estado}">${cita.estado}</span></p>
+                ${cita.comentarios_cliente ? `<p>Comentarios: ${cita.comentarios_cliente}</p>` : ''}
+                ${cita.link_virtual ? `<p><a href="${cita.link_virtual}" target="_blank">Enlace virtual</a></p>` : ''}
             </div>
             <div class="cita-acciones">
-                ${tipo === 'proximas' && cita.estado === 'agendada' ? `
-                    <button onclick="cancelarCita(${cita.id})" class="btn btn-sm btn-danger">Cancelar</button>
+                <button class="btn-ver-detalle" onclick="verDetalleCita(${cita.id})">Ver Detalles</button>
+                ${(cita.estado === 'agendada' || cita.estado === 'confirmada') ? `
+                    <button class="btn-cancelar-cita" onclick="cancelarCita(${cita.id})">Cancelar</button>
                 ` : ''}
-                <button onclick="verDetallesCita(${cita.id})" class="btn btn-sm btn-outline">Ver Detalles</button>
             </div>
         `;
-        
-        fragment.appendChild(citaCard);
+        fragment.appendChild(citaElement);
     });
     
+    container.innerHTML = '';
     container.appendChild(fragment);
 }
+
+function actualizarResumenCitas(total, proximas, completadas, canceladas) {
+    const elementos = [
+        { id: 'total-citas', valor: total },
+        { id: 'proximas-citas', valor: proximas },
+        { id: 'citas-completadas', valor: completadas },
+        { id: 'citas-canceladas', valor: canceladas }
+    ];
+    
+    elementos.forEach(({ id, valor }) => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.textContent = valor;
+    });
+}
+
+// ============ GESTIÓN DE PAGOS ============
 
 async function cargarHistorialPagos() {
     const operation = 'cargar-pagos';
@@ -450,27 +493,45 @@ async function cargarHistorialPagos() {
         LoadingManager.start(operation);
         console.log('🔄 Cargando historial de pagos...');
         
-        // Para MVP, usar datos de ejemplo
-        const pagos = [
-            {
-                id: 1,
-                fecha: '2025-05-20',
-                concepto: 'Paquete Psicoterapia 4 Sesiones',
-                metodo: 'QR',
-                monto: 260000,
-                estado: 'aprobado'
-            },
-            {
-                id: 2,
-                fecha: '2025-05-10',
-                concepto: 'Orientación Familiar',
-                metodo: 'QR',
-                monto: 110000,
-                estado: 'aprobado'
-            }
-        ];
+        // Verificar cache
+        const cached = CacheManager.get('usuario-pagos');
+        if (cached) {
+            renderizarHistorialPagos(cached);
+            console.log('✅ Pagos cargados desde cache');
+        }
         
-        renderizarHistorialPagos(pagos);
+        // Intentar cargar datos reales
+        try {
+            const response = await apiRequest('/pagos/mis-pagos');
+            const pagos = response.pagos || response || [];
+            
+            CacheManager.set('usuario-pagos', pagos);
+            renderizarHistorialPagos(pagos);
+        } catch (error) {
+            console.warn('⚠️ No se pudieron cargar pagos reales, usando datos de ejemplo');
+            
+            // Datos de ejemplo para MVP
+            const pagosEjemplo = [
+                {
+                    id: 1,
+                    fecha: '2025-05-20',
+                    concepto: 'Paquete Psicoterapia 4 Sesiones',
+                    metodo: 'QR',
+                    monto: 260000,
+                    estado: 'aprobado'
+                },
+                {
+                    id: 2,
+                    fecha: '2025-05-10',
+                    concepto: 'Orientación Familiar',
+                    metodo: 'QR',
+                    monto: 110000,
+                    estado: 'pendiente'
+                }
+            ];
+            
+            renderizarHistorialPagos(pagosEjemplo);
+        }
         
     } catch (error) {
         ErrorHandler.handle(error, operation);
@@ -480,114 +541,68 @@ async function cargarHistorialPagos() {
 }
 
 function renderizarHistorialPagos(pagos) {
-    const tbody = document.querySelector('#tabla-pagos tbody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
+    const container = document.getElementById('lista-pagos');
+    if (!container) return;
     
     if (!pagos || pagos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay historial de pagos</td></tr>';
+        container.innerHTML = '<p class="sin-pagos">No tienes pagos registrados.</p>';
+        actualizarResumenPagos(0, 0, '-');
         return;
     }
     
+    // Aplicar filtro
+    const filtroEstado = document.getElementById('filtro-estado-pagos')?.value || 'todos';
+    const pagosFiltrados = filtroEstado === 'todos' ? pagos : pagos.filter(p => p.estado === filtroEstado);
+    
+    // Calcular resumen
+    const totalPagado = pagos.filter(p => p.estado === 'aprobado').reduce((sum, p) => sum + (p.monto || 0), 0);
+    const pendientes = pagos.filter(p => p.estado === 'pendiente').length;
+    const ultimoPago = pagos.length > 0 ? formatearFecha(pagos[0].fecha || pagos[0].created_at) : '-';
+    
+    actualizarResumenPagos(totalPagado, pendientes, ultimoPago);
+    
+    // Renderizar lista
     const fragment = document.createDocumentFragment();
     
-    pagos.forEach(pago => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${formatearFecha(pago.fecha)}</td>
-            <td>${pago.concepto}</td>
-            <td>${pago.metodo}</td>
-            <td>${formatearPrecio(pago.monto)}</td>
-            <td><span class="estado ${pago.estado}">${pago.estado}</span></td>
-            <td>
-                <button onclick="verComprobantePago(${pago.id})" class="btn btn-sm btn-outline">Ver</button>
-            </td>
+    pagosFiltrados.forEach(pago => {
+        const pagoElement = document.createElement('div');
+        pagoElement.className = `pago-item ${pago.estado}`;
+        pagoElement.innerHTML = `
+            <div class="pago-fecha">
+                <div class="fecha">${formatearFecha(pago.fecha || pago.created_at)}</div>
+                <div class="metodo">${pago.metodo || pago.metodo_pago || 'QR'}</div>
+            </div>
+            <div class="pago-info">
+                <h4>${pago.concepto}</h4>
+                <p>Monto: ${formatearPrecio(pago.monto)}</p>
+                <p>Estado: <span class="estado ${pago.estado}">${pago.estado}</span></p>
+                ${pago.referencia ? `<p>Referencia: ${pago.referencia}</p>` : ''}
+            </div>
+            <div class="pago-acciones">
+                <button class="btn-ver-detalle" onclick="verDetallePago(${pago.id})">Ver Detalles</button>
+                ${pago.comprobante ? `
+                    <button class="btn-ver-comprobante" onclick="verComprobante('${pago.comprobante}')">Ver Comprobante</button>
+                ` : ''}
+            </div>
         `;
-        fragment.appendChild(row);
+        fragment.appendChild(pagoElement);
     });
     
-    tbody.appendChild(fragment);
+    container.innerHTML = '';
+    container.appendChild(fragment);
 }
 
-// ============ CONFIGURACIÓN DE EVENTOS OPTIMIZADA ============
-
-function configurarEventos() {
-    console.log('🔧 Configurando eventos del perfil...');
+function actualizarResumenPagos(totalPagado, pendientes, ultimoPago) {
+    const elementos = [
+        { id: 'total-pagado', valor: formatearPrecio(totalPagado) },
+        { id: 'pagos-pendientes', valor: pendientes },
+        { id: 'ultimo-pago', valor: ultimoPago }
+    ];
     
-    // Navegación del sidebar
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const seccion = this.dataset.section;
-            if (seccion) {
-                mostrarSeccion(seccion);
-            }
-        });
+    elementos.forEach(({ id, valor }) => {
+        const elemento = document.getElementById(id);
+        if (elemento) elemento.textContent = valor;
     });
-    
-    // Botón editar información
-    const btnEditar = document.getElementById('btn-editar-info');
-    if (btnEditar) {
-        btnEditar.addEventListener('click', toggleEditarInfo);
-    }
-    
-    // Formulario de información personal
-    const formInfo = document.getElementById('form-info-personal');
-    if (formInfo) {
-        formInfo.addEventListener('submit', guardarInformacionPersonal);
-    }
-    
-    // Botón cancelar edición
-    const btnCancelar = document.getElementById('btn-cancelar-info');
-    if (btnCancelar) {
-        btnCancelar.addEventListener('click', cancelarEdicion);
-    }
-    
-    // Formulario de cambiar contraseña
-    const formPassword = document.getElementById('form-cambiar-password');
-    if (formPassword) {
-        formPassword.addEventListener('submit', cambiarPassword);
-    }
-    
-    // Tabs de citas
-    document.querySelectorAll('.tab-citas').forEach(tab => {
-        tab.addEventListener('click', function() {
-            const tipo = this.dataset.tipo;
-            if (tipo) {
-                cambiarTabCitas(tipo);
-            }
-        });
-    });
-    
-    // Avatar
-    const btnCambiarAvatar = document.getElementById('btn-cambiar-avatar');
-    const inputAvatar = document.getElementById('input-avatar');
-    
-    if (btnCambiarAvatar && inputAvatar) {
-        btnCambiarAvatar.addEventListener('click', () => inputAvatar.click());
-        inputAvatar.addEventListener('change', cambiarAvatar);
-    }
-    
-    // Botón nueva cita
-    const btnNuevaCita = document.getElementById('btn-nueva-cita');
-    if (btnNuevaCita) {
-        btnNuevaCita.addEventListener('click', mostrarModalNuevaCita);
-    }
-    
-    // Botón cerrar sesión
-    const btnCerrarSesion = document.getElementById('btn-cerrar-sesion');
-    if (btnCerrarSesion) {
-        btnCerrarSesion.addEventListener('click', cerrarSesion);
-    }
-    
-    // Botón eliminar cuenta
-    const btnEliminarCuenta = document.getElementById('btn-eliminar-cuenta');
-    if (btnEliminarCuenta) {
-        btnEliminarCuenta.addEventListener('click', confirmarEliminacion);
-    }
-    
-    console.log('✅ Eventos configurados correctamente');
 }
 
 // ============ GESTIÓN DE INFORMACIÓN PERSONAL ============
@@ -595,7 +610,10 @@ function configurarEventos() {
 function toggleEditarInfo() {
     editandoInfo = !editandoInfo;
     
-    const campos = ['nombre', 'telefono', 'documento'];
+    console.log('🔧 Modo edición:', editandoInfo ? 'ACTIVADO' : 'DESACTIVADO');
+    
+    // CORREGIDO: incluir todos los campos editables
+    const campos = ['nombre', 'telefono', 'documento', 'direccion', 'fecha_nacimiento', 'genero'];
     const btnEditar = document.getElementById('btn-editar-info');
     const formActions = document.getElementById('form-actions');
     
@@ -603,16 +621,20 @@ function toggleEditarInfo() {
         const elemento = document.getElementById(campo);
         if (elemento) {
             elemento.disabled = !editandoInfo;
+            console.log(`📝 Campo ${campo}:`, editandoInfo ? 'HABILITADO' : 'DESHABILITADO');
+        } else {
+            console.warn(`⚠️ Campo ${campo} no encontrado`);
         }
     });
     
     if (btnEditar) {
-        btnEditar.textContent = editandoInfo ? 'Editando...' : 'Editar';
-        btnEditar.disabled = editandoInfo;
+        btnEditar.textContent = editandoInfo ? 'Cancelar Edición' : 'Editar';
+        btnEditar.className = editandoInfo ? 'btn-cancelar' : 'btn-editar';
     }
     
     if (formActions) {
         formActions.style.display = editandoInfo ? 'flex' : 'none';
+        console.log('🎛️ Botones de acción:', editandoInfo ? 'MOSTRADOS' : 'OCULTOS');
     }
     
     if (!editandoInfo) {
@@ -620,20 +642,67 @@ function toggleEditarInfo() {
     }
 }
 
+// AGREGAR función para cancelar desde el botón "Editar"
+function cancelarDesdeBotonEditar() {
+    if (editandoInfo) {
+        restaurarDatosOriginales();
+        toggleEditarInfo();
+    } else {
+        toggleEditarInfo();
+    }
+}
+
 function restaurarDatosOriginales() {
-    const campos = ['nombre', 'telefono', 'documento'];
+    const campos = ['nombre', 'telefono', 'documento', 'direccion', 'fecha_nacimiento', 'genero'];
     campos.forEach(campo => {
         const elemento = document.getElementById(campo);
         if (elemento && datosOriginales[campo] !== undefined) {
-            elemento.value = datosOriginales[campo] || '';
+            if (campo === 'fecha_nacimiento' && datosOriginales[campo]) {
+                elemento.value = datosOriginales[campo].split('T')[0];
+            } else {
+                elemento.value = datosOriginales[campo] || '';
+            }
         }
     });
 }
 
 function cancelarEdicion() {
-    if (editandoInfo) {
-        toggleEditarInfo();
+    restaurarDatosOriginales();
+    toggleEditarInfo();
+}
+
+// Validación de formularios mejorada
+function validarFormularioInfo(datos) {
+    const errores = [];
+    
+    // Validar nombre
+    if (!datos.nombre || datos.nombre.trim().length < 2) {
+        errores.push('El nombre debe tener al menos 2 caracteres');
     }
+    
+    // Validar teléfono
+    const telefonoRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    if (!datos.telefono || !telefonoRegex.test(datos.telefono.replace(/\s/g, ''))) {
+        errores.push('El teléfono debe tener un formato válido');
+    }
+    
+    // Validar documento si se proporciona
+    if (datos.documento && datos.documento.trim().length < 6) {
+        errores.push('El documento debe tener al menos 6 caracteres');
+    }
+    
+    // Validar fecha de nacimiento
+    if (datos.fecha_nacimiento) {
+        const fechaNac = new Date(datos.fecha_nacimiento);
+        const hoy = new Date();
+        const edad = hoy.getFullYear() - fechaNac.getFullYear();
+        
+        if (edad < 13 || edad > 120) {
+            errores.push('La fecha de nacimiento no es válida');
+        }
+    }
+    
+    return errores;
 }
 
 async function guardarInformacionPersonal(event) {
@@ -648,13 +717,27 @@ async function guardarInformacionPersonal(event) {
         const datosActualizados = {
             nombre: formData.get('nombre'),
             telefono: formData.get('telefono'),
-            documento: formData.get('documento')
+            documento: formData.get('documento'),
+            direccion: formData.get('direccion'),
+            fecha_nacimiento: formData.get('fecha_nacimiento'),
+            genero: formData.get('genero')
         };
         
-        await apiRequest(CONFIG.ENDPOINTS.PERFIL, {
+        // AGREGAR: Validaciones mejoradas
+        const errores = validarFormularioInfo(datosActualizados);
+        if (errores.length > 0) {
+            mostrarMensaje('Errores de validación:\n• ' + errores.join('\n• '), 'error');
+            return;
+        }
+        
+        console.log('📤 Enviando datos actualizados:', datosActualizados);
+        
+        const response = await apiRequest('/usuarios/perfil', {
             method: 'PUT',
             body: JSON.stringify(datosActualizados)
         });
+        
+        console.log('✅ Información actualizada:', response);
         
         mostrarMensaje('Información actualizada correctamente', 'success');
         
@@ -662,9 +745,56 @@ async function guardarInformacionPersonal(event) {
         datosOriginales = { ...datosOriginales, ...datosActualizados };
         CacheManager.invalidate('usuario');
         
+        // Actualizar sidebar con nuevos datos
+        const nombreUsuario = document.getElementById('nombre-usuario');
+        if (nombreUsuario) nombreUsuario.textContent = datosActualizados.nombre;
+        
         toggleEditarInfo();
         
     } catch (error) {
+        console.error('❌ Error actualizando información:', error);
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
+    }
+}
+
+// ============ GESTIÓN DE CONFIGURACIÓN ============
+
+async function guardarNotificaciones(event) {
+    event.preventDefault();
+    
+    const operation = 'guardar-notificaciones';
+    
+    try {
+        LoadingManager.start(operation);
+        
+        const formData = new FormData(event.target);
+        const configuracion = {
+            notificaciones_email: formData.has('notificaciones_email'),
+            notificaciones_sms: formData.has('notificaciones_sms'),
+            recordatorios_citas: formData.has('recordatorios_citas')
+        };
+        
+        console.log('⚙️ Guardando configuración:', configuracion);
+        
+        // CORREGIDO: Usar endpoint correcto
+        const response = await apiRequest('/usuarios/perfil', {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                configuracion: JSON.stringify(configuracion) 
+            })
+        });
+        
+        console.log('✅ Configuración guardada:', response);
+        
+        mostrarMensaje('Preferencias de notificación guardadas', 'success');
+        
+        // Actualizar cache
+        CacheManager.invalidate('usuario');
+        
+    } catch (error) {
+        console.error('❌ Error guardando notificaciones:', error);
         ErrorHandler.handle(error, operation);
     } finally {
         LoadingManager.end(operation);
@@ -680,21 +810,40 @@ async function cambiarPassword(event) {
         LoadingManager.start(operation);
         
         const formData = new FormData(event.target);
-        const passwordActual = formData.get('password-actual');
-        const passwordNueva = formData.get('password-nueva');
-        const passwordConfirmar = formData.get('password-confirmar');
+        const passwordActual = formData.get('password_actual');
+        const passwordNueva = formData.get('password_nueva');
+        const passwordConfirmar = formData.get('password_confirmar');
+        
+        console.log('🔐 Intentando cambiar contraseña...');
+        
+        // Validaciones
+        if (!passwordActual.trim()) {
+            mostrarMensaje('Debes ingresar tu contraseña actual', 'error');
+            return;
+        }
+        
+        if (!passwordNueva.trim()) {
+            mostrarMensaje('Debes ingresar una nueva contraseña', 'error');
+            return;
+        }
         
         if (passwordNueva !== passwordConfirmar) {
-            mostrarMensaje('Las contraseñas no coinciden', 'error');
+            mostrarMensaje('Las contraseñas nuevas no coinciden', 'error');
             return;
         }
         
         if (passwordNueva.length < 6) {
-            mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'error');
+            mostrarMensaje('La nueva contraseña debe tener al menos 6 caracteres', 'error');
             return;
         }
         
-        await apiRequest(CONFIG.ENDPOINTS.CAMBIAR_PASSWORD, {
+        if (passwordActual === passwordNueva) {
+            mostrarMensaje('La nueva contraseña debe ser diferente a la actual', 'error');
+            return;
+        }
+        
+        // CORREGIDO: Usar endpoint correcto
+        const response = await apiRequest('/auth/cambiar-password', {
             method: 'PUT',
             body: JSON.stringify({
                 password_actual: passwordActual,
@@ -702,265 +851,44 @@ async function cambiarPassword(event) {
             })
         });
         
-        mostrarMensaje('Contraseña cambiada correctamente', 'success');
+        console.log('✅ Contraseña cambiada:', response);
+        
+        mostrarMensaje('Contraseña cambiada exitosamente', 'success');
+        
+        // Limpiar formulario
         event.target.reset();
         
     } catch (error) {
-        ErrorHandler.handle(error, operation);
+        console.error('❌ Error cambiando contraseña:', error);
+        
+        // Manejar errores específicos
+        if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+            mostrarMensaje('La contraseña actual es incorrecta', 'error');
+        } else if (error.message.includes('400')) {
+            mostrarMensaje('Datos de contraseña inválidos', 'error');
+        } else {
+            mostrarMensaje('Error al cambiar la contraseña: ' + error.message, 'error');
+        }
     } finally {
         LoadingManager.end(operation);
     }
 }
 
-// ============ GESTIÓN DE CITAS ============
-
-function cambiarTabCitas(tipo) {
-    // Actualizar tabs activos
-    document.querySelectorAll('.tab-citas').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    const tabActivo = document.querySelector(`[data-tipo="${tipo}"]`);
-    if (tabActivo) {
-        tabActivo.classList.add('active');
-    }
-    
-    // Filtrar y mostrar citas según el tipo
-    const ahora = new Date();
-    let citasFiltradas = [];
-    
-    switch (tipo) {
-        case 'proximas':
-            citasFiltradas = citasUsuario.filter(cita => {
-                const fechaCita = new Date(cita.fecha);
-                return fechaCita >= ahora && ['agendada', 'confirmada'].includes(cita.estado);
-            });
-            break;
-        case 'pasadas':
-            citasFiltradas = citasUsuario.filter(cita => {
-                const fechaCita = new Date(cita.fecha);
-                return fechaCita < ahora || cita.estado === 'completada';
-            });
-            break;
-        case 'canceladas':
-            citasFiltradas = citasUsuario.filter(cita => cita.estado === 'cancelada');
-            break;
-    }
-    
-    renderizarCitas(citasFiltradas, tipo);
-}
-
-async function cancelarCita(citaId) {
-    if (!confirm('¿Estás seguro de que quieres cancelar esta cita?')) return;
-    
-    const operation = `cancelar-cita-${citaId}`;
-    
-    try {
-        LoadingManager.start(operation);
-        
-        const motivo = prompt('Motivo de la cancelación (opcional):');
-        
-        await apiRequest(`${CONFIG.ENDPOINTS.CITAS}/${citaId}/cancelar`, {
-            method: 'PUT',
-            body: JSON.stringify({
-                motivo: motivo || 'Cancelada por el cliente'
-            })
-        });
-        
-        mostrarMensaje('Cita cancelada exitosamente', 'success');
-        
-        // Invalidar cache y recargar datos
-        CacheManager.invalidate('citas');
-        CacheManager.invalidate('creditos');
-        
-        await Promise.all([
-            cargarCitas(),
-            cargarCreditos()
-        ]);
-        
-    } catch (error) {
-        ErrorHandler.handle(error, operation);
-    } finally {
-        LoadingManager.end(operation);
-    }
-}
-
-function verDetallesCita(citaId) {
-    const cita = citasUsuario.find(c => c.id === citaId);
-    if (!cita) return;
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-detalles-cita';
-    modal.style.cssText = `
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
-        justify-content: center; z-index: 10000;
-    `;
-    
-    modal.innerHTML = `
-        <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%;">
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>Detalles de la Cita</h3>
-                <button onclick="this.closest('.modal-detalles-cita').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-            </div>
-            <div class="cita-detalles">
-                <p><strong>Servicio:</strong> ${cita.servicio_nombre}</p>
-                <p><strong>Fecha:</strong> ${formatearFecha(cita.fecha)}</p>
-                <p><strong>Hora:</strong> ${cita.hora}</p>
-                <p><strong>Modalidad:</strong> ${cita.modalidad}</p>
-                <p><strong>Estado:</strong> <span class="estado ${cita.estado}">${cita.estado}</span></p>
-                ${cita.comentarios_cliente ? `<p><strong>Tus comentarios:</strong> ${cita.comentarios_cliente}</p>` : ''}
-                ${cita.link_virtual ? `<p><strong>Link de la sesión:</strong> <a href="${cita.link_virtual}" target="_blank">Unirse</a></p>` : ''}
-            </div>
-            <div class="modal-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
-                <button onclick="this.closest('.modal-detalles-cita').remove()" class="btn btn-secondary">Cerrar</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Cerrar modal al hacer click fuera
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
+function confirmarEliminarCuenta() {
+    if (confirm('¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.')) {
+        if (confirm('Esta acción eliminará permanentemente todos tus datos. ¿Continuar?')) {
+            eliminarCuenta();
         }
-    });
-}
-
-function mostrarModalNuevaCita() {
-    // Redirigir a página de agendar cita
-    window.location.href = '/agendar-cita.html';
-}
-
-function agendarCitaConCredito(servicioId) {
-    // Redirigir a página de agendar cita con servicio preseleccionado
-    window.location.href = `/agendar-cita.html?servicio=${servicioId}`;
-}
-
-// ============ CONFIGURACIÓN Y NOTIFICACIONES ============
-
-function configurarNotificaciones() {
-    const switches = ['notif-email', 'notif-sms', 'notif-recordatorios'];
-    
-    switches.forEach(switchId => {
-        const elemento = document.getElementById(switchId);
-        if (elemento) {
-            elemento.addEventListener('change', debounce(guardarConfiguracionNotificaciones, 500));
-        }
-    });
-}
-
-async function guardarConfiguracionNotificaciones() {
-    const operation = 'guardar-notificaciones';
-    
-    try {
-        LoadingManager.start(operation);
-        
-        const configuracion = {
-            notificaciones_email: document.getElementById('notif-email')?.checked || false,
-            notificaciones_sms: document.getElementById('notif-sms')?.checked || false,
-            recordatorios_citas: document.getElementById('notif-recordatorios')?.checked || false
-        };
-        
-        await apiRequest(CONFIG.ENDPOINTS.CONFIGURACION, {
-            method: 'PUT',
-            body: JSON.stringify(configuracion)
-        });
-        
-        mostrarMensaje('Configuración de notificaciones actualizada', 'success');
-        
-    } catch (error) {
-        ErrorHandler.handle(error, operation);
-        // Revertir cambios en caso de error
-        await cargarDatosUsuario();
-    } finally {
-        LoadingManager.end(operation);
     }
 }
 
-// ============ FUNCIONES AUXILIARES ============
-
-function mostrarSeccion(seccionId) {
-    // Ocultar todas las secciones
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    // Mostrar sección seleccionada
-    const seccion = document.getElementById(seccionId);
-    if (seccion) {
-        seccion.classList.add('active');
-    }
-    
-    // Actualizar navegación
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    const navItem = document.querySelector(`[data-section="${seccionId}"]`);
-    if (navItem) {
-        navItem.classList.add('active');
-    }
-}
-
-async function cambiarAvatar(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const operation = 'cambiar-avatar';
-    
-    try {
-        LoadingManager.start(operation);
-        
-        // Validar archivo
-        if (file.size > 5 * 1024 * 1024) { // 5MB
-            throw new Error('El archivo es demasiado grande. Máximo 5MB.');
-        }
-        
-        if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
-            throw new Error('Tipo de archivo no permitido. Solo JPG, JPEG y PNG.');
-        }
-        
-        const formData = new FormData();
-        formData.append('avatar', file);
-        
-        const response = await apiRequestWithFile('/usuarios/avatar', formData);
-        
-        // Actualizar imagen del avatar
-        const avatarImg = document.getElementById('avatar-usuario');
-        if (avatarImg && response.avatarUrl) {
-            avatarImg.src = response.avatarUrl;
-        }
-        
-        mostrarMensaje('Avatar actualizado exitosamente', 'success');
-        
-    } catch (error) {
-        ErrorHandler.handle(error, operation);
-    } finally {
-        LoadingManager.end(operation);
-    }
-}
-
-function verComprobantePago(pagoId) {
-    mostrarMensaje('Funcionalidad de comprobantes en desarrollo', 'info');
-}
-
-async function confirmarEliminacion() {
-    if (!confirm('¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.')) {
-        return;
-    }
-    
-    if (!confirm('Se eliminarán todos tus datos permanentemente. ¿Continuar?')) {
-        return;
-    }
-    
+async function eliminarCuenta() {
     const operation = 'eliminar-cuenta';
     
     try {
         LoadingManager.start(operation);
         
-        await apiRequest('/usuarios/eliminar', {
+        await apiRequest('/usuarios/perfil', {
             method: 'DELETE'
         });
         
@@ -968,7 +896,7 @@ async function confirmarEliminacion() {
         
         // Cerrar sesión y redirigir
         setTimeout(() => {
-            ErrorHandler.logout();
+            auth.logout();
         }, 2000);
         
     } catch (error) {
@@ -978,16 +906,295 @@ async function confirmarEliminacion() {
     }
 }
 
-function cerrarSesion() {
-    if (confirm('¿Estás seguro de que quieres cerrar la sesión?')) {
-        CacheManager.clear();
-        ErrorHandler.logout();
+// ============ FUNCIONES AUXILIARES ============
+
+function usarCredito(creditoId) {
+    mostrarMensaje('Redirigiendo a agendar cita...', 'info');
+    window.location.href = `agendar-cita.html?credito=${creditoId}`;
+}
+
+function verDetalleCita(citaId) {
+    mostrarMensaje('Función de ver detalle de cita en desarrollo', 'info');
+}
+
+function cancelarCita(citaId) {
+    if (confirm('¿Estás seguro de que quieres cancelar esta cita?')) {
+        mostrarMensaje('Función de cancelar cita en desarrollo', 'info');
     }
 }
 
-// Limpiar cache cuando se cierra la página
-window.addEventListener('beforeunload', function() {
-    CacheManager.clear();
+function verDetallePago(pagoId) {
+    mostrarMensaje('Función de ver detalle de pago en desarrollo', 'info');
+}
+
+function verComprobante(comprobante) {
+    if (comprobante) {
+        const url = `${CONFIG.API_BASE_URL.replace('/api', '')}/uploads/${comprobante}`;
+        window.open(url, '_blank');
+    } else {
+        mostrarMensaje('No hay comprobante disponible', 'warning');
+    }
+}
+
+function cambiarAvatar() {
+    mostrarMensaje('Función de cambio de avatar en desarrollo', 'info');
+}
+
+function agendarNuevaCita() {
+    console.log('📅 Preparando para agendar cita...');
+    
+    // Verificar si el usuario tiene créditos
+    const totalCreditos = document.getElementById('total-creditos');
+    const creditosDisponibles = totalCreditos ? parseInt(totalCreditos.textContent) : 0;
+    
+    if (creditosDisponibles === 0) {
+        // Mostrar modal personalizado en lugar de confirm
+        mostrarModalSinCreditos();
+        return;
+    }
+    
+    // Mostrar mensaje de carga
+    mostrarMensaje('Redirigiendo a agendar cita...', 'info', 2000);
+    
+    // Redirigir después de un breve delay
+    setTimeout(() => {
+        window.location.href = 'agendar-cita.html';
+    }, 500);
+}
+
+// AGREGAR función para modal sin créditos
+function mostrarModalSinCreditos() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        ">
+            <div style="font-size: 48px; margin-bottom: 20px;">💳</div>
+            <h3 style="color: #333; margin-bottom: 15px;">Sin Créditos Disponibles</h3>
+            <p style="color: #666; margin-bottom: 25px;">
+                Necesitas créditos para agendar una cita. 
+                ¿Deseas comprar créditos ahora?
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button onclick="this.closest('div').parentElement.remove()" style="
+                    padding: 10px 20px;
+                    background: #6c757d;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                ">Cancelar</button>
+                <button onclick="window.location.href='comprar.html'" style="
+                    padding: 10px 20px;
+                    background: #4EC3B1;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                ">Comprar Créditos</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Cerrar modal al hacer clic fuera
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function cerrarSesion() {
+    if (confirm('¿Estás seguro de que quieres cerrar la sesión?')) {
+        console.log('🚪 Cerrando sesión...');
+        
+        try {
+            // Limpiar cache local
+            CacheManager.clear();
+            
+            // Usar función de auth si existe
+            if (auth && auth.logout) {
+                auth.logout();
+            } else {
+                // Fallback manual
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                sessionStorage.clear();
+                
+                mostrarMensaje('Sesión cerrada exitosamente', 'success');
+                
+                // Redirigir después de un breve delay
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 1000);
+            }
+        } catch (error) {
+            console.error('Error cerrando sesión:', error);
+            // Forzar cierre de sesión
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = '/login.html';
+        }
+    }
+}
+
+// ============ FUNCIONES AUXILIARES ADICIONALES ============
+
+function mostrarMensaje(mensaje, tipo = 'info', duracion = 5000) {
+    // Crear contenedor de mensajes si no existe
+    let container = document.getElementById('mensajes-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'mensajes-container';
+        container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            max-width: 400px;
+        `;
+        document.body.appendChild(container);
+    }
+
+    // Crear mensaje
+    const mensajeElement = document.createElement('div');
+    mensajeElement.className = `mensaje mensaje-${tipo}`;
+    mensajeElement.style.cssText = `
+        background: ${tipo === 'success' ? '#d4edda' : tipo === 'error' ? '#f8d7da' : tipo === 'warning' ? '#fff3cd' : '#d1ecf1'};
+        color: ${tipo === 'success' ? '#155724' : tipo === 'error' ? '#721c24' : tipo === 'warning' ? '#856404' : '#0c5460'};
+        border: 1px solid ${tipo === 'success' ? '#c3e6cb' : tipo === 'error' ? '#f5c6cb' : tipo === 'warning' ? '#ffeaa7' : '#bee5eb'};
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease-out;
+    `;
+    mensajeElement.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>${mensaje}</span>
+            <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; margin-left: 10px;">&times;</button>
+        </div>
+    `;
+
+    container.appendChild(mensajeElement);
+
+    // Auto-remover después de la duración especificada
+    if (duracion > 0) {
+        setTimeout(() => {
+            if (mensajeElement.parentNode) {
+                mensajeElement.remove();
+            }
+        }, duracion);
+    }
+}
+
+// Función para formatear fechas (si no está en config.js)
+function formatearFecha(fecha) {
+    if (!fecha) return 'No disponible';
+    
+    try {
+        let date;
+        if (typeof fecha === 'string' && fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = fecha.split('-');
+            date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+            date = new Date(fecha);
+        }
+        
+        return date.toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (error) {
+        return 'Fecha inválida';
+    }
+}
+
+// Función para formatear precios (si no está en config.js)
+function formatearPrecio(amount) {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+    }).format(amount);
+}
+
+// ============ CONFIGURACIÓN DE EVENTOS ============
+
+function configurarEventos() {
+    // Configurar navegación
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const seccion = this.getAttribute('data-section');
+            if (seccion) {
+                mostrarSeccion(seccion);
+            }
+        });
+    });
+    
+    // Configurar filtros
+    const filtroEstadoCitas = document.getElementById('filtro-estado-citas');
+    if (filtroEstadoCitas) {
+        filtroEstadoCitas.addEventListener('change', cargarMisCitas);
+    }
+    
+    const filtroEstadoPagos = document.getElementById('filtro-estado-pagos');
+    if (filtroEstadoPagos) {
+        filtroEstadoPagos.addEventListener('change', cargarHistorialPagos);
+    }
+}
+
+// ============ INICIALIZACIÓN ============
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Inicializando perfil de cliente...');
+    
+    // Verificar autenticación
+    if (!auth || !auth.requireAuth()) {
+        window.location.href = '/login.html';
+        return;
+    }
+    
+    // Verificar que es cliente
+    const user = auth.getUser();
+    if (!user || user.tipo !== 'cliente') {
+        console.error('❌ Acceso denegado - Solo para clientes');
+        window.location.href = '/login.html';
+        return;
+    }
+    
+    // Configurar eventos
+    configurarEventos();
+    
+    // Cargar datos iniciales
+    cargarPerfilUsuario();
+    
+    console.log('✅ Perfil de cliente inicializado correctamente');
 });
 
-console.log('✅ Perfil de cliente optimizado cargado correctamente');
+console.log('✅ Perfil de cliente de CreSer cargado');

@@ -8,14 +8,15 @@
     <link rel="stylesheet" href="css/estilos-perfil.css">
     <link rel="stylesheet" href="css/estilos-navbar.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <header>
         <div class="navbar">
             <div class="logo">
-                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1">
-                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
             </div>
             <nav class="menu">
                 <a href="index.html">Inicio</a>
@@ -23,7 +24,9 @@
                 <a href="comprar.html">Comprar</a>
                 <a href="noticias.html">Noticias</a>
                 <div class="boton-acceder">
-                    <a href="#" id="btn-cerrar-sesion">Cerrar Sesión</a>
+                    <a href="#" onclick="cerrarSesion()" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </a>
                 </div>
             </nav>
         </div>
@@ -33,7 +36,7 @@
         <section class="titulo-principal">
             <h1>Mi Perfil</h1>
             <div class="subtitulo">
-                <p>Gestiona tu información personal y servicios</p>
+                <p>Gestiona tu información personal y configura tu cuenta</p>
             </div>
         </section>
 
@@ -41,11 +44,11 @@
             <div class="container">
                 <div class="perfil-layout">
                     <!-- Sidebar de navegación -->
-                    <div class="perfil-sidebar">
+                    <div class="perfil-sidebar cliente">
                         <div class="perfil-avatar">
-                            <img src="recursos/avatar-default.png" alt="Avatar" id="avatar-usuario">
-                            <button class="btn-cambiar-avatar" id="btn-cambiar-avatar">Cambiar Foto</button>
-                            <input type="file" id="input-avatar" accept="image/*" style="display: none;">
+                            <img src="recursos/avatar-default.png" alt="Avatar Usuario" id="avatar-usuario"
+                                onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjNGVjM2IxIi8+Cjx0ZXh0IHg9IjUwIiB5PSI2NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VTwvdGV4dD4KPC9zdmc+'">
+                            <button class="btn-cambiar-avatar" onclick="cambiarAvatar()">Cambiar Foto</button>
                         </div>
                         <div class="perfil-info-basica">
                             <h3 id="nombre-usuario">Cargando...</h3>
@@ -54,21 +57,55 @@
                         </div>
                         <nav class="perfil-nav">
                             <a href="#" class="nav-item active" data-section="informacion-personal">
-                                <i class="icon-user"></i> Información Personal
+                                <i class="fas fa-user"></i> Información Personal
                             </a>
                             <a href="#" class="nav-item" data-section="mis-creditos">
-                                <i class="icon-credit"></i> Mis Créditos
+                                <i class="fas fa-credit-card"></i> Mis Créditos
                             </a>
                             <a href="#" class="nav-item" data-section="mis-citas">
-                                <i class="icon-calendar"></i> Mis Citas
+                                <i class="fas fa-calendar-alt"></i> Mis Citas
                             </a>
                             <a href="#" class="nav-item" data-section="historial-pagos">
-                                <i class="icon-payment"></i> Historial de Pagos
+                                <i class="fas fa-receipt"></i> Historial de Pagos
                             </a>
                             <a href="#" class="nav-item" data-section="configuracion">
-                                <i class="icon-settings"></i> Configuración
+                                <i class="fas fa-cog"></i> Configuración
                             </a>
                         </nav>
+                        
+                        <!-- Botones de acción mejorados -->
+                        <div class="sidebar-actions">
+                            <button onclick="agendarNuevaCita()" class="btn-agendar-cita-mejorado">
+                                <div class="btn-icon">
+                                    <i class="fas fa-calendar-plus"></i>
+                                </div>
+                                <div class="btn-content">
+                                    <span class="btn-title">Agendar Cita</span>
+                                    <span class="btn-subtitle">Nueva sesión</span>
+                                </div>
+                                <div class="btn-arrow">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </button>
+                            
+                            <button onclick="window.location.href='comprar.html'" class="btn-comprar-creditos-sidebar">
+                                <div class="btn-icon">
+                                    <i class="fas fa-credit-card"></i>
+                                </div>
+                                <div class="btn-content">
+                                    <span class="btn-title">Comprar Créditos</span>
+                                    <span class="btn-subtitle">Recargar cuenta</span>
+                                </div>
+                                <div class="btn-arrow">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </button>
+                            
+                            <button onclick="cerrarSesion()" class="btn-logout-sidebar-mejorado">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Cerrar Sesión</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Contenido principal -->
@@ -77,16 +114,17 @@
                         <div id="informacion-personal" class="content-section active">
                             <div class="section-header">
                                 <h2>Información Personal</h2>
-                                <button id="btn-editar-info" class="btn-editar">Editar</button>
+                                <button id="btn-editar-info" class="btn-editar" onclick="cancelarDesdeBotonEditar()">Editar</button>
                             </div>
-                            <form id="form-info-personal" class="perfil-form">
+                            
+                            <form id="form-info-personal" onsubmit="guardarInformacionPersonal(event)">
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="nombre">Nombre completo:</label>
+                                        <label for="nombre">Nombre Completo:</label>
                                         <input type="text" id="nombre" name="nombre" value="" disabled>
                                     </div>
                                     <div class="form-group">
-                                        <label for="email">Correo electrónico:</label>
+                                        <label for="email">Email:</label>
                                         <input type="email" id="email" name="email" value="" disabled readonly>
                                     </div>
                                 </div>
@@ -100,9 +138,36 @@
                                         <input type="text" id="documento" name="documento" value="" disabled>
                                     </div>
                                 </div>
-                                <div class="form-actions" id="form-actions" style="display: none;">
-                                    <button type="button" id="btn-cancelar-info" class="btn-cancelar">Cancelar</button>
-                                    <button type="submit" id="btn-guardar-info" class="btn-guardar">Guardar Cambios</button>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="direccion">Dirección:</label>
+                                        <textarea id="direccion" name="direccion" rows="2" disabled></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="fecha_nacimiento">Fecha de Nacimiento:</label>
+                                        <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" value="" disabled>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="genero">Género:</label>
+                                        <select id="genero" name="genero" disabled>
+                                            <option value="">Seleccionar...</option>
+                                            <option value="masculino">Masculino</option>
+                                            <option value="femenino">Femenino</option>
+                                            <option value="otro">Otro</option>
+                                            <option value="no-especificar">Prefiero no especificar</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="tipo_usuario">Tipo de Usuario:</label>
+                                        <input type="text" id="tipo_usuario" name="tipo_usuario" value="Cliente" disabled readonly>
+                                    </div>
+                                </div>
+                                
+                                <div id="form-actions" class="form-actions" style="display: none;">
+                                    <button type="button" class="btn-cancelar" onclick="cancelarEdicion()">Cancelar</button>
+                                    <button type="submit" class="btn-guardar">Guardar Cambios</button>
                                 </div>
                             </form>
                         </div>
@@ -111,11 +176,33 @@
                         <div id="mis-creditos" class="content-section">
                             <div class="section-header">
                                 <h2>Mis Créditos</h2>
-                                <a href="comprar.html" class="btn-comprar-creditos">Comprar Más Créditos</a>
+                                <button class="btn-actualizar" onclick="cargarCreditos()">
+                                    <i class="fas fa-sync-alt"></i> Actualizar
+                                </button>
                             </div>
-                            <div class="creditos-grid">
-                                <div class="loading-placeholder">
-                                    <p>Cargando tus créditos...</p>
+                            
+                            <div class="creditos-resumen">
+                                <div class="credito-card total">
+                                    <h3>Total de Créditos</h3>
+                                    <span class="credito-numero" id="total-creditos">0</span>
+                                    <p>Créditos disponibles</p>
+                                </div>
+                                <div class="credito-card usados">
+                                    <h3>Créditos Usados</h3>
+                                    <span class="credito-numero" id="creditos-usados">0</span>
+                                    <p>En citas realizadas</p>
+                                </div>
+                                <div class="credito-card proximos">
+                                    <h3>Próximos a Vencer</h3>
+                                    <span class="credito-numero" id="creditos-vencer">0</span>
+                                    <p>En los próximos 30 días</p>
+                                </div>
+                            </div>
+                            
+                            <div class="creditos-detalle">
+                                <h3>Detalle de Créditos por Servicio</h3>
+                                <div id="lista-creditos">
+                                    <div class="loading">Cargando créditos...</div>
                                 </div>
                             </div>
                         </div>
@@ -124,22 +211,42 @@
                         <div id="mis-citas" class="content-section">
                             <div class="section-header">
                                 <h2>Mis Citas</h2>
-                                <button id="btn-nueva-cita" class="btn-nueva-cita">Nueva Cita</button>
+                                <div class="header-actions">
+                                    <select id="filtro-estado-citas">
+                                        <option value="todas">Todas las citas</option>
+                                        <option value="agendada">Agendadas</option>
+                                        <option value="confirmada">Confirmadas</option>
+                                        <option value="completada">Completadas</option>
+                                        <option value="cancelada">Canceladas</option>
+                                    </select>
+                                    <button class="btn-actualizar" onclick="cargarMisCitas()">
+                                        <i class="fas fa-sync-alt"></i> Actualizar
+                                    </button>
+                                </div>
                             </div>
-                            <div class="citas-tabs">
-                                <button id="tab-proximas" class="tab-citas active" data-tipo="proximas">
-                                    Próximas <span class="counter">0</span>
-                                </button>
-                                <button id="tab-pasadas" class="tab-citas" data-tipo="pasadas">
-                                    Pasadas <span class="counter">0</span>
-                                </button>
-                                <button id="tab-canceladas" class="tab-citas" data-tipo="canceladas">
-                                    Canceladas <span class="counter">0</span>
-                                </button>
+                            
+                            <div class="citas-resumen">
+                                <div class="cita-stat">
+                                    <h4>Total de Citas</h4>
+                                    <span id="total-citas">0</span>
+                                </div>
+                                <div class="cita-stat">
+                                    <h4>Próximas Citas</h4>
+                                    <span id="proximas-citas">0</span>
+                                </div>
+                                <div class="cita-stat">
+                                    <h4>Completadas</h4>
+                                    <span id="citas-completadas">0</span>
+                                </div>
+                                <div class="cita-stat">
+                                    <h4>Canceladas</h4>
+                                    <span id="citas-canceladas">0</span>
+                                </div>
                             </div>
+                            
                             <div class="citas-lista">
-                                <div class="loading-placeholder">
-                                    <p>Cargando tus citas...</p>
+                                <div id="lista-citas">
+                                    <div class="loading">Cargando citas...</div>
                                 </div>
                             </div>
                         </div>
@@ -148,76 +255,95 @@
                         <div id="historial-pagos" class="content-section">
                             <div class="section-header">
                                 <h2>Historial de Pagos</h2>
+                                <div class="header-actions">
+                                    <select id="filtro-estado-pagos">
+                                        <option value="todos">Todos los pagos</option>
+                                        <option value="pendiente">Pendientes</option>
+                                        <option value="aprobado">Aprobados</option>
+                                        <option value="rechazado">Rechazados</option>
+                                    </select>
+                                    <button class="btn-actualizar" onclick="cargarHistorialPagos()">
+                                        <i class="fas fa-sync-alt"></i> Actualizar
+                                    </button>
+                                </div>
                             </div>
-                            <div class="pagos-tabla">
-                                <table id="tabla-pagos">
-                                    <thead>
-                                        <tr>
-                                            <th>Fecha</th>
-                                            <th>Concepto</th>
-                                            <th>Método</th>
-                                            <th>Monto</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td colspan="6" style="text-align: center;">Cargando historial de pagos...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            
+                            <div class="pagos-resumen">
+                                <div class="pago-stat">
+                                    <h4>Total Pagado</h4>
+                                    <span id="total-pagado">$0</span>
+                                </div>
+                                <div class="pago-stat">
+                                    <h4>Pagos Pendientes</h4>
+                                    <span id="pagos-pendientes">0</span>
+                                </div>
+                                <div class="pago-stat">
+                                    <h4>Último Pago</h4>
+                                    <span id="ultimo-pago">-</span>
+                                </div>
+                            </div>
+                            
+                            <div class="pagos-lista">
+                                <div id="lista-pagos">
+                                    <div class="loading">Cargando historial...</div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Configuración -->
                         <div id="configuracion" class="content-section">
                             <div class="section-header">
-                                <h2>Configuración</h2>
+                                <h2>Configuración de la Cuenta</h2>
                             </div>
+                            
                             <div class="config-sections">
-                                <div class="config-card">
-                                    <h3>Cambiar Contraseña</h3>
-                                    <form id="form-cambiar-password">
-                                        <div class="form-group">
-                                            <label for="password-actual">Contraseña actual:</label>
-                                            <input type="password" id="password-actual" name="password-actual" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="password-nueva">Nueva contraseña:</label>
-                                            <input type="password" id="password-nueva" name="password-nueva" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="password-confirmar">Confirmar nueva contraseña:</label>
-                                            <input type="password" id="password-confirmar" name="password-confirmar" required>
-                                        </div>
-                                        <button type="submit" class="btn-cambiar-password">Cambiar Contraseña</button>
-                                    </form>
-                                </div>
+                                <!-- Notificaciones -->
                                 <div class="config-card">
                                     <h3>Notificaciones</h3>
-                                    <div class="notificaciones-config">
-                                        <label class="switch">
-                                            <input type="checkbox" id="notif-email" checked>
-                                            <span class="slider"></span>
-                                            Notificaciones por email
-                                        </label>
-                                        <label class="switch">
-                                            <input type="checkbox" id="notif-sms">
-                                            <span class="slider"></span>
-                                            Notificaciones por SMS
-                                        </label>
-                                        <label class="switch">
-                                            <input type="checkbox" id="notif-recordatorios" checked>
-                                            <span class="slider"></span>
-                                            Recordatorios de citas
-                                        </label>
-                                    </div>
+                                    <form id="form-notificaciones" onsubmit="guardarNotificaciones(event)">
+                                        <div class="config-option">
+                                            <input type="checkbox" id="notif-email" name="notificaciones_email" checked>
+                                            <label for="notif-email">Recibir notificaciones por email</label>
+                                        </div>
+                                        <div class="config-option">
+                                            <input type="checkbox" id="notif-sms" name="notificaciones_sms">
+                                            <label for="notif-sms">Recibir notificaciones por SMS</label>
+                                        </div>
+                                        <div class="config-option">
+                                            <input type="checkbox" id="notif-recordatorios" name="recordatorios_citas" checked>
+                                            <label for="notif-recordatorios">Recordatorios de citas</label>
+                                        </div>
+                                        <button type="submit" class="btn-guardar">Guardar Preferencias</button>
+                                    </form>
                                 </div>
-                                <div class="config-card peligro">
-                                    <h3>Eliminar Cuenta</h3>
-                                    <p>Esta acción no se puede deshacer. Se eliminarán todos tus datos permanentemente.</p>
-                                    <button class="btn-eliminar-cuenta" id="btn-eliminar-cuenta">Eliminar Mi Cuenta</button>
+                                
+                                <!-- Cambiar Contraseña -->
+                                <div class="config-card">
+                                    <h3>Cambiar Contraseña</h3>
+                                    <form id="form-password" onsubmit="cambiarPassword(event)">
+                                        <div class="form-group">
+                                            <label for="password-actual">Contraseña Actual:</label>
+                                            <input type="password" id="password-actual" name="password_actual" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="password-nueva">Nueva Contraseña:</label>
+                                            <input type="password" id="password-nueva" name="password_nueva" required minlength="6">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="password-confirmar">Confirmar Nueva Contraseña:</label>
+                                            <input type="password" id="password-confirmar" name="password_confirmar" required minlength="6">
+                                        </div>
+                                        <button type="submit" class="btn-guardar">Cambiar Contraseña</button>
+                                    </form>
+                                </div>
+                                
+                                <!-- Eliminar Cuenta -->
+                                <div class="config-card danger">
+                                    <h3>Zona de Peligro</h3>
+                                    <p>Las siguientes acciones son irreversibles:</p>
+                                    <button class="btn-danger" onclick="confirmarEliminarCuenta()">
+                                        Eliminar mi cuenta
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -230,7 +356,7 @@
     <div class="footer-full-width">
         <div class="footer-content">
             <div class="footer-info">
-                <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer">
+                <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer" onerror="this.style.display='none'">
                 <h3>Ubicación</h3>
                 <p>Calle Principal #123, Ibagué, Colombia</p>
                 <h4>Síguenos</h4>
@@ -244,6 +370,7 @@
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/perfil-cliente.js"></script>
