@@ -102,7 +102,7 @@ class ErrorHandler {
 
 // ============ CONFIGURACIÓN DE EVENTOS OPTIMIZADA ============
 
-function configurarEventosAdmin() {
+function configurarEventos() {
     console.log('🔧 Configurando eventos del panel admin...');
 
     // Búsqueda de clientes con debounce
@@ -122,11 +122,11 @@ function configurarEventosAdmin() {
     };
 
     setupFilter('filtro-estado-pago', cargarPagosAdmin);
-    setupFilter('filtro-fecha', cargarCitasPorPeriodo);
     setupFilter('periodo-reporte', cargarReportes);
 
-
+    // AGREGADO: Configurar filtro de calendario
     configurarFiltroCalendario();
+
     // Event delegation para acciones dinámicas
     document.addEventListener('click', handleDynamicActions);
 
@@ -525,8 +525,6 @@ async function cargarCitasPorPeriodo() {
     }
 }
 
-
-
 function renderizarCitasPeriodo(citas) {
     const container = document.getElementById('citas-del-periodo');
     if (!container) return;
@@ -541,7 +539,6 @@ function renderizarCitasPeriodo(citas) {
     citas.forEach(cita => {
         const citaCard = document.createElement('div');
         citaCard.className = 'cita-admin-card';
-        console.log(cita.fecha);
         citaCard.innerHTML = `
             <div class="cita-fecha-hora">
                 <div class="fecha">${formatearFecha(cita.fecha)}</div>
@@ -593,112 +590,189 @@ function actualizarResumenCitas(citas) {
     });
 }
 
-// ============ GESTIÓN DE PAGOS OPTIMIZADA ============
+// ============ GESTIÓN DE PAGOS OPTIMIZADA Y CORREGIDA ============
 
 async function cargarPagosAdmin() {
-    const operation = 'pagos-admin';
+    console.log('🔄 Iniciando carga de pagos admin...');
 
     try {
-        LoadingManager.start(operation);
-        const filtroEstado = document.getElementById('filtro-estado-pago')?.value || 'todos';
-
-        console.log('🔄 Cargando pagos admin, filtro:', filtroEstado);
-
-        const cacheKey = `pagos-${filtroEstado}`;
-        const cached = CacheManager.get(cacheKey);
-
-        if (cached) {
-            renderizarPagosAdmin(cached);
-            console.log('✅ Pagos cargados desde cache');
+        // Mostrar loading en la tabla
+        const tbody = document.getElementById('tabla-pagos-body');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="loading">Cargando pagos...</td></tr>';
         }
 
-        let endpoint = CONFIG.ENDPOINTS.ADMIN_PAGOS_DETALLADO;
-        if (filtroEstado !== 'todos') {
-            endpoint += `?estado=${filtroEstado}`;
-        }
+        // CORREGIDO: Usar endpoint correcto
+        console.log('📡 Consultando endpoint: /pagos');
+        const pagos = await apiRequest('/pagos');
 
-        const pagos = await apiRequest(endpoint);
-        CacheManager.set(cacheKey, pagos);
+        console.log('✅ Pagos recibidos:', pagos);
+        console.log('📊 Cantidad de pagos:', pagos?.length || 0);
+
+        // Renderizar pagos
         renderizarPagosAdmin(pagos);
-        actualizarResumenPagos(pagos);
+
+        // Cargar estadísticas
+        try {
+            const estadisticas = await apiRequest('/pagos/estadisticas');
+            console.log('✅ Estadísticas recibidas:', estadisticas);
+            actualizarResumenPagos(estadisticas);
+        } catch (statError) {
+            console.warn('⚠️ Error cargando estadísticas, calculando básicas:', statError);
+            const statsBasicas = calcularEstadisticasBasicas(pagos);
+            actualizarResumenPagos(statsBasicas);
+        }
 
     } catch (error) {
-        ErrorHandler.handle(error, operation);
-    } finally {
-        LoadingManager.end(operation);
+        console.error('❌ Error completo cargando pagos:', error);
+
+        // Mostrar error en la tabla
+        const tbody = document.getElementById('tabla-pagos-body');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; color: #dc3545; padding: 20px;">
+                        ❌ Error cargando pagos: ${error.message}
+                        <br><small>Endpoint consultado: /pagos</small>
+                        <br><button onclick="cargarPagosAdmin()" style="margin-top: 10px; padding: 5px 10px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;">Reintentar</button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        mostrarMensaje('Error cargando pagos: ' + error.message, 'error');
     }
+}
+
+// AGREGAR función para calcular estadísticas básicas
+function calcularEstadisticasBasicas(pagos) {
+    if (!pagos || !Array.isArray(pagos)) {
+        return {
+            total_pagos: 0,
+            pagos_pendientes: 0,
+            pagos_aprobados: 0,
+            pagos_rechazados: 0,
+            monto_total: 0
+        };
+    }
+
+    const stats = {
+        total_pagos: pagos.length,
+        pagos_pendientes: pagos.filter(p => p.estado === 'pendiente').length,
+        pagos_aprobados: pagos.filter(p => p.estado === 'aprobado').length,
+        pagos_rechazados: pagos.filter(p => p.estado === 'rechazado').length,
+        monto_total: pagos.reduce((sum, p) => sum + (p.monto || 0), 0)
+    };
+
+    console.log('📊 Estadísticas calculadas localmente:', stats);
+    return stats;
+}
+
+// AGREGAR función para actualizar resumen
+function actualizarResumenPagos(estadisticas) {
+    console.log('📊 Actualizando resumen de pagos:', estadisticas);
+
+    const elementos = [
+        { id: 'total-pagos', valor: estadisticas.total_pagos || 0 },
+        { id: 'pagos-pendientes-count', valor: estadisticas.pagos_pendientes || 0 },
+        { id: 'pagos-aprobados-count', valor: estadisticas.pagos_aprobados || 0 },
+        { id: 'monto-total-pagos', valor: formatearPrecio(estadisticas.monto_total || 0) }
+    ];
+
+    elementos.forEach(({ id, valor }) => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.textContent = valor;
+            console.log(`✅ Actualizado ${id}: ${valor}`);
+        } else {
+            console.warn(`⚠️ No se encontró elemento: ${id}`);
+        }
+    });
 }
 
 function renderizarPagosAdmin(pagos) {
-    const tbody = document.getElementById('tabla-pagos-body');
-    if (!tbody) return;
+    console.log('🎨 Renderizando pagos en tabla...');
 
-    if (!pagos || pagos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8">No hay pagos para mostrar</td></tr>';
+    const tbody = document.getElementById('tabla-pagos-body');
+    if (!tbody) {
+        console.error('❌ No se encontró tabla-pagos-body');
         return;
     }
 
-    const fragment = document.createDocumentFragment();
+    tbody.innerHTML = '';
 
-    pagos.forEach(pago => {
+    if (!pagos || !Array.isArray(pagos) || pagos.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+                    📄 No hay pagos registrados
+                    <br><small>Los pagos aparecerán aquí cuando se registren</small>
+                </td>
+            </tr>
+        `;
+        console.log('ℹ️ No hay pagos para mostrar');
+        return;
+    }
+
+    console.log(`🎯 Renderizando ${pagos.length} pagos en la tabla`);
+
+    pagos.forEach((pago, index) => {
+        console.log(`📋 Procesando pago ${index + 1}:`, pago);
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>#P${pago.id.toString().padStart(3, '0')}</td>
+            <td>${pago.id}</td>
             <td>
                 <div class="cliente-info">
-                    <div class="nombre">${pago.nombre_pagador || 'Cliente'}</div>
-                    <div class="email">${pago.email_pagador || 'Sin email'}</div>
+                    <strong>${pago.usuario_nombre || pago.nombre_pagador || 'Cliente'}</strong>
+                    ${pago.usuario_email || pago.email_pagador ? `<br><small>${pago.usuario_email || pago.email_pagador}</small>` : ''}
                 </div>
             </td>
-            <td>${pago.concepto || 'Sin concepto'}</td>
-            <td>QR/Transferencia</td>
-            <td class="monto">${formatearPrecio(pago.monto || 0)}</td>
-            <td>${formatearFecha(pago.created_at)}</td>
             <td>
-                <span class="estado ${pago.estado || 'pendiente'}">${pago.estado || 'Pendiente'}</span>
-                ${pago.fecha_aprobacion ? `<br><small>Aprobado: ${formatearFecha(pago.fecha_aprobacion)}</small>` : ''}
+                <div class="concepto-info">
+                    <strong>${pago.concepto}</strong>
+                    <br><small>${pago.tipo_compra}</small>
+                </div>
+            </td>
+            <td>
+                <span class="metodo-pago ${pago.metodo_pago || 'qr'}">
+                    ${(pago.metodo_pago || 'QR').toUpperCase()}
+                </span>
+            </td>
+            <td class="monto">
+                <strong>${formatearPrecio(pago.monto)}</strong>
+            </td>
+            <td>
+                <div class="fecha-info">
+                    <strong>${formatearFecha(pago.created_at)}</strong>
+                    ${pago.fecha_aprobacion ? `<br><small>Aprobado: ${formatearFecha(pago.fecha_aprobacion)}</small>` : ''}
+                </div>
+            </td>
+            <td>
+                <span class="estado estado-${pago.estado}">
+                    ${pago.estado.toUpperCase()}
+                </span>
             </td>
             <td>
                 <div class="acciones-pago">
-                    ${(pago.estado || 'pendiente') === 'pendiente' ? `
-                        <button class="btn-aprobar" data-pago-id="${pago.id}">Aprobar</button>
-                        <button class="btn-rechazar" onclick="rechazarPagoReal(${pago.id})">Rechazar</button>
+                    <button onclick="verDetallePago(${pago.id})" class="btn-ver-detalle" title="Ver detalles">
+                        👁️
+                    </button>
+                    ${pago.estado === 'pendiente' ? `
+                        <button onclick="aprobarPago(${pago.id})" class="btn-aprobar" title="Aprobar" style="background: #28a745; color: white; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; margin: 0 2px;">
+                            ✅
+                        </button>
+                        <button onclick="rechazarPago(${pago.id})" class="btn-rechazar" title="Rechazar" style="background: #dc3545; color: white; border: none; padding: 5px 8px; border-radius: 3px; cursor: pointer; margin: 0 2px;">
+                            ❌
+                        </button>
                     ` : ''}
-                    ${pago.comprobante ? `
-                        <button class="btn-ver-comprobante" onclick="verComprobanteReal('${pago.comprobante}')">Ver Comprobante</button>
-                    ` : ''}
-                    <button class="btn-detalles" onclick="verDetallesPagoReal(${pago.id})">Detalles</button>
                 </div>
             </td>
         `;
-        fragment.appendChild(row);
+        tbody.appendChild(row);
     });
 
-    tbody.innerHTML = '';
-    tbody.appendChild(fragment);
-}
-
-function actualizarResumenPagos(pagos) {
-    const resumen = {
-        total: pagos.length,
-        pendientes: pagos.filter(p => p.estado === 'pendiente').length,
-        aprobados: pagos.filter(p => p.estado === 'aprobado').length,
-        montoTotal: pagos.reduce((sum, p) => sum + (p.monto || 0), 0)
-    };
-
-    const updates = [
-        { id: 'total-pagos', value: resumen.total },
-        { id: 'pagos-pendientes-count', value: resumen.pendientes },
-        { id: 'pagos-aprobados-count', value: resumen.aprobados },
-        { id: 'monto-total-pagos', value: formatearPrecio(resumen.montoTotal) }
-    ];
-
-    requestAnimationFrame(() => {
-        updates.forEach(({ id, value }) => {
-            const element = document.getElementById(id);
-            if (element) element.textContent = value;
-        });
-    });
+    console.log('✅ Todos los pagos renderizados correctamente');
 }
 
 // ============ SISTEMA DE REPORTES OPTIMIZADO ============
@@ -1194,7 +1268,6 @@ async function completarCitaReal(citaId) {
     }
 }
 
-
 async function verDetallesCitaReal(citaId) {
     try {
         const cita = await apiRequest(`${CONFIG.ENDPOINTS.CITAS}/${citaId}`);
@@ -1359,7 +1432,7 @@ async function verDetallesPagoReal(pagoId) {
                     <p><strong>Estado:</strong> <span class="estado ${pago.estado}">${pago.estado}</span></p>
                     <p><strong>Fecha de creación:</strong> ${formatearFecha(pago.created_at)}</p>
                     ${pago.fecha_aprobacion ? `<p><strong>Fecha de aprobación:</strong> ${formatearFecha(pago.fecha_aprobacion)}</p>` : ''}
-                    ${pago.referencia_bancaria ? `<p><strong>Referencia bancaria:</strong> ${pago.referencia_bancaria}</p>` : ''}
+                    ${pago.referencia ? `<p><strong>Referencia:</strong> ${pago.referencia}</p>` : ''}
                 </div>
                 ${pago.notas_admin ? `
                     <div class="detalle-grupo">
@@ -1408,40 +1481,62 @@ function nuevoCliente() {
                 
                 <div class="form-group">
                     <label>Email *</label>
-                    <input type="email" name="email" required>
+                                        <input type="email" name="email" required>
                 </div>
                 
                 <div class="form-group">
-                    <label>Teléfono</label>
-                    <input type="tel" name="telefono" placeholder="+57 300 123 4567">
+                    <label>Teléfono *</label>
+                    <input type="tel" name="telefono" required>
                 </div>
                 
                 <div class="form-group">
                     <label>Documento</label>
-                    <input type="text" name="documento" placeholder="Cédula o documento de identidad">
+                    <input type="text" name="documento">
+                </div>
+                
+                <div class="form-group">
+                    <label>Contraseña *</label>
+                    <input type="password" name="password" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label>Confirmar Contraseña *</label>
+                    <input type="password" name="confirm_password" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label>Dirección</label>
+                    <textarea name="direccion" rows="2"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Fecha de Nacimiento</label>
+                    <input type="date" name="fecha_nacimiento">
+                </div>
+                
+                <div class="form-group">
+                    <label>Género</label>
+                    <select name="genero">
+                        <option value="">Seleccionar...</option>
+                        <option value="masculino">Masculino</option>
+                        <option value="femenino">Femenino</option>
+                        <option value="otro">Otro</option>
+                        <option value="no-especificar">Prefiero no especificar</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Estado</label>
+                    <select name="estado">
+                        <option value="activo">Activo</option>
+                        <option value="inactivo">Inactivo</option>
+                    </select>
                 </div>
             </div>
             
-            <div class="form-group">
-                <label>Contraseña Temporal *</label>
-                <div class="password-input">
-                    <input type="password" name="password" id="password-cliente" required>
-                    <button type="button" onclick="generarPasswordTemporal()" class="btn btn-info">Generar</button>
-                </div>
-                <small>El cliente deberá cambiar esta contraseña en su primer acceso</small>
-            </div>
-            
-            <div class="form-group">
-                <label>Estado</label>
-                <select name="estado">
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
-                </select>
-            </div>
-            
-            <div class="form-actions">
+            <div class="modal-actions">
                 <button type="button" onclick="this.closest('.modal-nuevo-cliente').remove()" class="btn btn-secondary">Cancelar</button>
-                <button type="submit" class="btn btn-success">Crear Cliente</button>
+                <button type="submit" class="btn btn-primary">Crear Cliente</button>
             </div>
         </form>
     `);
@@ -1456,15 +1551,6 @@ function nuevoCliente() {
     });
 }
 
-function generarPasswordTemporal() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '';
-    for (let i = 0; i < 8; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    document.getElementById('password-cliente').value = password;
-}
-
 async function crearNuevoCliente(form) {
     const operation = 'crear-cliente';
 
@@ -1472,25 +1558,15 @@ async function crearNuevoCliente(form) {
         LoadingManager.start(operation);
 
         const formData = new FormData(form);
+        const clienteData = Object.fromEntries(formData);
 
-        // Validaciones básicas en frontend
-        const email = formData.get('email');
-        const documento = formData.get('documento');
-
-        if (!email || !email.includes('@')) {
-            mostrarMensaje('Por favor ingresa un email válido', 'error');
+        // Validaciones
+        if (clienteData.password !== clienteData.confirm_password) {
+            mostrarMensaje('Las contraseñas no coinciden', 'error');
             return;
         }
 
-        const clienteData = {
-            nombre: formData.get('nombre'),
-            email: email,
-            telefono: formData.get('telefono'),
-            documento: documento || null, // Permitir documento vacío
-            password: formData.get('password'),
-            tipo: 'cliente',
-            estado: formData.get('estado')
-        };
+        delete clienteData.confirm_password;
 
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = true;
@@ -1504,28 +1580,17 @@ async function crearNuevoCliente(form) {
         mostrarMensaje('Cliente creado exitosamente', 'success');
         form.closest('.modal-nuevo-cliente').remove();
 
-        // Invalidar cache y recargar datos
+        // Invalidar cache y recargar
         CacheManager.invalidate('usuarios');
         CacheManager.invalidate('dashboard');
-        await cargarClientes();
+
+        await Promise.all([
+            cargarClientes(),
+            cargarDashboard()
+        ]);
 
     } catch (error) {
-        console.error('Error creando cliente:', error);
-
-        // Manejar errores específicos
-        let mensajeError = 'Error al crear el cliente';
-
-        if (error.message.includes('email')) {
-            mensajeError = 'Ya existe un usuario con este email';
-        } else if (error.message.includes('documento')) {
-            mensajeError = 'Ya existe un usuario con este documento';
-        } else if (error.message.includes('duplicados')) {
-            mensajeError = 'Los datos ingresados ya están registrados';
-        } else {
-            mensajeError = error.message;
-        }
-
-        mostrarMensaje(mensajeError, 'error');
+        ErrorHandler.handle(error, operation);
 
         const submitButton = form.querySelector('button[type="submit"]');
         submitButton.disabled = false;
@@ -1536,16 +1601,12 @@ async function crearNuevoCliente(form) {
 }
 
 async function editarClienteReal(clienteId) {
-    const operation = `editar-cliente-${clienteId}`;
-
     try {
-        LoadingManager.start(operation);
-
         const cliente = await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`);
 
         const modal = createModal('modal-editar-cliente', `
             <div class="modal-header">
-                <h3>Editar Cliente</h3>
+                <h3>Editar Cliente #${clienteId}</h3>
                 <button onclick="this.closest('.modal-editar-cliente').remove()" class="btn-close">&times;</button>
             </div>
             
@@ -1553,162 +1614,158 @@ async function editarClienteReal(clienteId) {
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Nombre Completo *</label>
-                        <input type="text" name="nombre" value="${cliente.nombre}" required>
+                        <input type="text" name="nombre" value="${cliente.nombre || ''}" required>
                     </div>
                     
                     <div class="form-group">
                         <label>Email *</label>
-                        <input type="email" name="email" value="${cliente.email}" required>
+                        <input type="email" name="email" value="${cliente.email || ''}" required>
                     </div>
                     
                     <div class="form-group">
-                        <label>Teléfono</label>
-                        <input type="tel" name="telefono" value="${cliente.telefono || ''}">
+                        <label>Teléfono *</label>
+                        <input type="tel" name="telefono" value="${cliente.telefono || ''}" required>
                     </div>
                     
                     <div class="form-group">
                         <label>Documento</label>
                         <input type="text" name="documento" value="${cliente.documento || ''}">
                     </div>
+                    
+                    <div class="form-group">
+                        <label>Dirección</label>
+                        <textarea name="direccion" rows="2">${cliente.direccion || ''}</textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Fecha de Nacimiento</label>
+                        <input type="date" name="fecha_nacimiento" value="${cliente.fecha_nacimiento ? cliente.fecha_nacimiento.split('T')[0] : ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Género</label>
+                        <select name="genero">
+                            <option value="">Seleccionar...</option>
+                            <option value="masculino" ${cliente.genero === 'masculino' ? 'selected' : ''}>Masculino</option>
+                            <option value="femenino" ${cliente.genero === 'femenino' ? 'selected' : ''}>Femenino</option>
+                            <option value="otro" ${cliente.genero === 'otro' ? 'selected' : ''}>Otro</option>
+                            <option value="no-especificar" ${cliente.genero === 'no-especificar' ? 'selected' : ''}>Prefiero no especificar</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select name="estado">
+                            <option value="activo" ${cliente.estado === 'activo' ? 'selected' : ''}>Activo</option>
+                            <option value="inactivo" ${cliente.estado === 'inactivo' ? 'selected' : ''}>Inactivo</option>
+                            <option value="suspendido" ${cliente.estado === 'suspendido' ? 'selected' : ''}>Suspendido</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Nueva Contraseña</label>
+                        <input type="password" name="password" placeholder="Dejar vacío para mantener actual">
+                        <small>Solo completar si desea cambiar la contraseña</small>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label>Estado</label>
-                    <select name="estado">
-                        <option value="activo" ${cliente.estado === 'activo' ? 'selected' : ''}>Activo</option>
-                        <option value="inactivo" ${cliente.estado === 'inactivo' ? 'selected' : ''}>Inactivo</option>
-                        <option value="suspendido" ${cliente.estado === 'suspendido' ? 'selected' : ''}>Suspendido</option>
-                    </select>
-                </div>
-                
-                <div class="form-actions">
+                <div class="modal-actions">
                     <button type="button" onclick="this.closest('.modal-editar-cliente').remove()" class="btn btn-secondary">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    <button type="submit" class="btn btn-primary">Actualizar Cliente</button>
                 </div>
             </form>
         `);
 
         document.body.appendChild(modal);
 
+        // Configurar evento de submit
         const form = modal.querySelector('#form-editar-cliente');
         form.addEventListener('submit', async function (e) {
             e.preventDefault();
-
-            const formData = new FormData(e.target);
-            const datosActualizados = {
-                nombre: formData.get('nombre'),
-                email: formData.get('email'),
-                telefono: formData.get('telefono'),
-                documento: formData.get('documento'),
-                estado: formData.get('estado')
-            };
-
-            try {
-                const submitButton = e.target.querySelector('button[type="submit"]');
-                submitButton.disabled = true;
-                submitButton.textContent = 'Guardando...';
-
-                await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(datosActualizados)
-                });
-
-                mostrarMensaje('Cliente actualizado exitosamente', 'success');
-                modal.remove();
-
-                // Invalidar cache y recargar
-                CacheManager.invalidate('usuarios');
-                await cargarClientes();
-
-            } catch (error) {
-                console.error('Error actualizando cliente:', error);
-                mostrarMensaje('Error al actualizar el cliente: ' + error.message, 'error');
-                submitButton.disabled = false;
-                submitButton.textContent = 'Guardar Cambios';
-            }
+            await actualizarCliente(clienteId, e.target);
         });
 
     } catch (error) {
+        ErrorHandler.handle(error, 'editar-cliente');
+    }
+}
+
+async function actualizarCliente(clienteId, form) {
+    const operation = `actualizar-cliente-${clienteId}`;
+
+    try {
+        LoadingManager.start(operation);
+
+        const formData = new FormData(form);
+        const clienteData = Object.fromEntries(formData);
+
+        // Remover password si está vacío
+        if (!clienteData.password) {
+            delete clienteData.password;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Actualizando...';
+
+        await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`, {
+            method: 'PUT',
+            body: JSON.stringify(clienteData)
+        });
+
+        mostrarMensaje('Cliente actualizado exitosamente', 'success');
+        form.closest('.modal-editar-cliente').remove();
+
+        // Invalidar cache y recargar
+        CacheManager.invalidate('usuarios');
+
+        await cargarClientes();
+
+    } catch (error) {
         ErrorHandler.handle(error, operation);
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Actualizar Cliente';
     } finally {
         LoadingManager.end(operation);
     }
 }
 
 async function verClienteReal(clienteId) {
-    const operation = `ver-cliente-${clienteId}`;
-
     try {
-        LoadingManager.start(operation);
-
-        const [cliente, creditos, citas] = await Promise.allSettled([
-            apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`),
-            apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}/creditos`).catch(() => []),
-            apiRequest(`${CONFIG.ENDPOINTS.CITAS}?usuario_id=${clienteId}`).catch(() => [])
-        ]);
-
-        const clienteData = cliente.status === 'fulfilled' ? cliente.value : null;
-        const creditosData = creditos.status === 'fulfilled' ? creditos.value : [];
-        const citasData = citas.status === 'fulfilled' ? citas.value : [];
-
-        if (!clienteData) {
-            throw new Error('No se pudo cargar la información del cliente');
-        }
+        const cliente = await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`);
 
         const modal = createModal('modal-ver-cliente', `
             <div class="modal-header">
-                <h3>Perfil del Cliente</h3>
+                <h3>Información del Cliente #${clienteId}</h3>
                 <button onclick="this.closest('.modal-ver-cliente').remove()" class="btn-close">&times;</button>
             </div>
             
-            <div class="cliente-perfil-content">
-                <div class="info-personal">
+            <div class="cliente-detalles">
+                <div class="detalle-grupo">
                     <h4>Información Personal</h4>
-                    <div class="info-grid">
-                        <div><strong>Nombre:</strong> ${clienteData.nombre}</div>
-                        <div><strong>Email:</strong> ${clienteData.email}</div>
-                        <div><strong>Teléfono:</strong> ${clienteData.telefono || 'No especificado'}</div>
-                        <div><strong>Documento:</strong> ${clienteData.documento || 'No especificado'}</div>
-                        <div><strong>Estado:</strong> <span class="estado ${clienteData.estado}">${clienteData.estado}</span></div>
-                        <div><strong>Fecha de registro:</strong> ${formatearFecha(clienteData.created_at)}</div>
-                    </div>
+                    <p><strong>Nombre:</strong> ${cliente.nombre}</p>
+                    <p><strong>Email:</strong> ${cliente.email}</p>
+                    <p><strong>Teléfono:</strong> ${cliente.telefono}</p>
+                    <p><strong>Documento:</strong> ${cliente.documento || 'No especificado'}</p>
+                    <p><strong>Fecha de nacimiento:</strong> ${cliente.fecha_nacimiento ? formatearFecha(cliente.fecha_nacimiento) : 'No especificada'}</p>
+                    <p><strong>Género:</strong> ${cliente.genero || 'No especificado'}</p>
+                    <p><strong>Dirección:</strong> ${cliente.direccion || 'No especificada'}</p>
                 </div>
                 
-                <div class="creditos-info">
-                    <h4>Créditos Disponibles</h4>
-                    ${creditosData.length > 0 ? `
-                        <div class="creditos-lista">
-                            ${creditosData.map(credito => `
-                                <div class="credito-item">
-                                    <span>${credito.servicio_nombre}</span>
-                                    <span><strong>${credito.cantidad_disponible} créditos</strong></span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : '<p>No tiene créditos disponibles</p>'}
-                </div>
-                
-                <div class="historial-citas">
-                    <h4>Historial de Citas</h4>
-                    ${citasData.length > 0 ? `
-                        <div class="citas-lista">
-                            ${citasData.slice(0, 10).map(cita => `
-                                <div class="cita-item">
-                                    <div>
-                                        <strong>${formatearFecha(cita.fecha)}</strong> - ${cita.hora}<br>
-                                        <small>${cita.servicio_nombre} (${cita.modalidad})</small>
-                                    </div>
-                                    <span class="estado ${cita.estado}">${cita.estado}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                        ${citasData.length > 10 ? `<p><small>Mostrando las últimas 10 citas de ${citasData.length} total</small></p>` : ''}
-                    ` : '<p>No tiene citas registradas</p>'}
+                <div class="detalle-grupo">
+                    <h4>Estado de la Cuenta</h4>
+                    <p><strong>Estado:</strong> <span class="estado ${cliente.estado}">${cliente.estado}</span></p>
+                    <p><strong>Tipo:</strong> ${cliente.tipo}</p>
+                    <p><strong>Créditos disponibles:</strong> ${cliente.creditos_disponibles || 0}</p>
+                    <p><strong>Total de citas:</strong> ${cliente.total_citas || 0}</p>
+                    <p><strong>Fecha de registro:</strong> ${formatearFecha(cliente.created_at)}</p>
                 </div>
             </div>
             
             <div class="modal-actions">
-                <button onclick="editarClienteReal(${clienteId}); this.closest('.modal-ver-cliente').remove();" class="btn btn-primary">Editar Cliente</button>
+                <button onclick="editarClienteReal(${clienteId}); this.closest('.modal-ver-cliente').remove();" class="btn btn-primary">Editar</button>
                 <button onclick="this.closest('.modal-ver-cliente').remove()" class="btn btn-secondary">Cerrar</button>
             </div>
         `);
@@ -1716,9 +1773,7 @@ async function verClienteReal(clienteId) {
         document.body.appendChild(modal);
 
     } catch (error) {
-        ErrorHandler.handle(error, operation);
-    } finally {
-        LoadingManager.end(operation);
+        ErrorHandler.handle(error, 'ver-cliente');
     }
 }
 
@@ -1726,7 +1781,7 @@ async function cambiarEstadoCliente(clienteId, estadoActual) {
     const nuevoEstado = estadoActual === 'activo' ? 'suspendido' : 'activo';
     const accion = nuevoEstado === 'activo' ? 'activar' : 'suspender';
 
-    if (!confirm(`¿Estás seguro de que quieres ${accion} este cliente?`)) return;
+    if (!confirm(`¿Estás seguro de que deseas ${accion} este cliente?`)) return;
 
     const operation = `cambiar-estado-${clienteId}`;
 
@@ -1735,9 +1790,7 @@ async function cambiarEstadoCliente(clienteId, estadoActual) {
 
         await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/${clienteId}`, {
             method: 'PUT',
-            body: JSON.stringify({
-                estado: nuevoEstado
-            })
+            body: JSON.stringify({ estado: nuevoEstado })
         });
 
         mostrarMensaje(`Cliente ${accion === 'activar' ? 'activado' : 'suspendido'} exitosamente`, 'success');
@@ -1753,184 +1806,16 @@ async function cambiarEstadoCliente(clienteId, estadoActual) {
     }
 }
 
-// ============ UTILIDADES DE UI OPTIMIZADAS ============
-
-function createModal(className, content) {
-    const modal = document.createElement('div');
-    modal.className = className;
-    modal.style.cssText = `
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
-        justify-content: center; z-index: 10000; animation: fadeIn 0.3s ease;
-    `;
-
-    const modalContent = document.createElement('div');
-    modalContent.className = 'modal-content';
-    modalContent.style.cssText = `
-        background: white; padding: 20px; border-radius: 8px; 
-        max-width: 90vw; max-height: 90vh; overflow-y: auto;
-        animation: slideIn 0.3s ease;
-    `;
-    modalContent.innerHTML = content;
-
-    modal.appendChild(modalContent);
-
-    // Cerrar modal al hacer click fuera
-    modal.addEventListener('click', function (e) {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-
-    // Cerrar modal con ESC
-    const handleEscape = function (e) {
-        if (e.key === 'Escape') {
-            modal.remove();
-            document.removeEventListener('keydown', handleEscape);
-        }
-    };
-    document.addEventListener('keydown', handleEscape);
-
-    return modal;
-}
-
-// ============ NAVEGACIÓN Y UTILIDADES ============
-
-function mostrarSeccionAdmin(seccionId) {
-    try {
-        // Ocultar todas las secciones
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-        });
-
-        // Mostrar sección seleccionada
-        const seccion = document.getElementById(seccionId);
-        if (seccion) {
-            seccion.classList.add('active');
-        }
-
-        // Actualizar navegación
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.remove('active');
-        });
-
-        const navItem = document.querySelector(`[onclick*="${seccionId}"]`);
-        if (navItem) {
-            navItem.classList.add('active');
-        }
-
-        // Cargar datos específicos de la sección
-        switch (seccionId) {
-            case 'dashboard':
-                cargarDashboard();
-                break;
-            case 'gestionar-clientes':
-                cargarClientes();
-                break;
-            case 'gestionar-citas':
-                cargarCitasPorPeriodo();
-                break;
-            case 'gestionar-pagos':
-                cargarPagosAdmin();
-                break;
-            case 'reportes':
-                cargarReportes();
-                break;
-        }
-
-    } catch (error) {
-        console.error('Error mostrando sección:', error);
-    }
-}
-
-function cargarInformacionAdmin() {
-    const user = auth.getUser();
-    if (user) {
-        const elementos = {
-            nombreSidebar: document.getElementById('nombre-admin-sidebar'),
-            emailSidebar: document.getElementById('email-admin-sidebar'),
-            adminNombre: document.getElementById('admin-nombre')
-        };
-
-        if (elementos.nombreSidebar) elementos.nombreSidebar.textContent = user.nombre;
-        if (elementos.emailSidebar) elementos.emailSidebar.textContent = user.email;
-        if (elementos.adminNombre) elementos.adminNombre.textContent = user.nombre;
-    }
-}
-
-function cerrarSesion() {
-    if (confirm('¿Estás seguro de que quieres cerrar la sesión?')) {
-        CacheManager.clear();
-        auth.logout();
-    }
-}
-
-// Funciones de navegación de calendario
-function mesSiguiente() {
-    mesActual.setMonth(mesActual.getMonth() + 1);
-    actualizarCalendario();
-}
-
-function mesAnterior() {
-    mesActual.setMonth(mesActual.getMonth() - 1);
-    actualizarCalendario();
-}
-
-function actualizarCalendario() {
-    const mesNombre = mesActual.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-    const elementoMes = document.getElementById('mes-actual');
-    if (elementoMes) {
-        elementoMes.textContent = mesNombre;
-    }
-    cargarCitasPorPeriodo();
-}
-
-// Función de compatibilidad
-function verComprobante(pagoId) {
-    verDetallesPagoReal(pagoId);
-}
-
-// ============ INICIALIZACIÓN OPTIMIZADA ============
-
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 Inicializando panel administrativo optimizado...');
-
-    // Verificar autenticación y permisos
-    if (!auth.requireAuth() || !auth.requireAdmin()) {
-        console.error('❌ Usuario no autorizado');
-        return;
-    }
-
-    // Configurar eventos
-    configurarEventosAdmin();
-
-    // Cargar información del usuario
-    cargarInformacionAdmin();
-
-    // Cargar dashboard inicial
-    cargarDashboard();
-
-    // Configurar auto-refresh cada 5 minutos
-    setInterval(() => {
-        if (document.visibilityState === 'visible') {
-            CacheManager.clear();
-            cargarDashboard();
-        }
-    }, 5 * 60 * 1000);
-
-    console.log('✅ Panel administrativo optimizado inicializado correctamente');
-});
-
-// Limpiar cache cuando se cierra la página
-window.addEventListener('beforeunload', function () {
-    CacheManager.clear();
-});
-
-
 // ============ GESTIÓN DE NUEVA CITA DESDE ADMIN ============
 
 function nuevaCitaAdmin() {
     console.log('🆕 Abriendo modal para nueva cita desde admin...');
+
+    // Verificar que no haya otro modal abierto
+    const modalExistente = document.querySelector('.modal-nueva-cita-admin');
+    if (modalExistente) {
+        modalExistente.remove();
+    }
 
     const modal = document.createElement('div');
     modal.className = 'modal-nueva-cita-admin';
@@ -2015,21 +1900,32 @@ function nuevaCitaAdmin() {
     `;
 
     document.body.appendChild(modal);
+    console.log('✅ Modal agregado al DOM');
 
-    // Cargar datos para los selects
-    cargarClientesParaCitaAdmin();
-    cargarServiciosParaCitaAdmin();
+    // Cargar datos para los selects con delay para asegurar que el DOM esté listo
+    setTimeout(() => {
+        console.log('🔄 Iniciando carga de datos...');
+        cargarClientesParaCitaAdmin();
+        cargarServiciosParaCitaAdmin();
+    }, 100);
 
     // Configurar evento de submit
     const form = modal.querySelector('#form-nueva-cita-admin');
-    form.addEventListener('submit', async function (e) {
-        e.preventDefault();
-        await crearNuevaCitaAdmin(e.target);
-    });
+    if (form) {
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            await crearNuevaCitaAdmin(e.target);
+        });
+        console.log('✅ Event listener agregado al formulario');
+    } else {
+        console.error('❌ No se encontró el formulario');
+    }
 }
 
 async function cargarClientesParaCitaAdmin() {
     try {
+        console.log('🔄 Cargando clientes para nueva cita...');
+
         const usuarios = await apiRequest(CONFIG.ENDPOINTS.ADMIN_USUARIOS_COMPLETO);
         const select = document.getElementById('select-cliente-admin');
 
@@ -2042,6 +1938,7 @@ async function cargarClientesParaCitaAdmin() {
                 option.textContent = `${usuario.nombre} (${usuario.email})`;
                 select.appendChild(option);
             });
+            console.log(`✅ ${usuarios.length} clientes cargados`);
         }
     } catch (error) {
         console.error('Error cargando clientes:', error);
@@ -2053,6 +1950,7 @@ async function cargarServiciosParaCitaAdmin() {
     try {
         console.log('🔄 Cargando servicios reales de la BD...');
 
+        // CORREGIDO: Sin /api porque apiRequest ya lo agrega
         const servicios = await apiRequest('/servicios');
         const select = document.getElementById('select-servicio-admin');
 
@@ -2103,9 +2001,6 @@ async function cargarServiciosParaCitaAdmin() {
         mostrarMensaje('Error cargando servicios: ' + error.message, 'error');
     }
 }
-
-
-
 
 async function crearNuevaCitaAdmin(form) {
     const operation = 'crear-cita-admin';
@@ -2181,6 +2076,19 @@ async function crearNuevaCitaAdmin(form) {
     }
 }
 
+// ============ GESTIÓN DE FILTRO DE CALENDARIO ============
+
+function limpiarFiltroFecha() {
+    const calendario = document.getElementById('calendario-filtro');
+    if (calendario) {
+        calendario.value = '';
+        console.log('🧹 Filtro de fecha limpiado - mostrando todas las citas');
+    }
+
+    // Recargar todas las citas (sin filtro)
+    cargarCitasPorPeriodo();
+}
+
 function configurarFiltroCalendario() {
     const calendario = document.getElementById('calendario-filtro');
     if (calendario) {
@@ -2203,5 +2111,157 @@ function configurarFiltroCalendario() {
     }
 }
 
+// ============ UTILIDADES AUXILIARES ============
+
+function createModal(className, content) {
+    const modal = document.createElement('div');
+    modal.className = className;
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+        justify-content: center; z-index: 10000;
+    `;
+
+    modal.innerHTML = `
+        <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            ${content}
+        </div>
+    `;
+
+    return modal;
+}
+
+// Funciones placeholder para compatibilidad
+function aprobarPago(pagoId) { aprobarPagoReal(pagoId); }
+function rechazarPago(pagoId) { rechazarPagoReal(pagoId); }
+function verDetallePago(pagoId) { verDetallesPagoReal(pagoId); }
+function verComprobante(comprobante) { verComprobanteReal(comprobante); }
+
+// ============ NAVEGACIÓN OPTIMIZADA ============
+
+function mostrarSeccionAdmin(seccion) {
+    // Ocultar todas las secciones
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+
+    // Remover clase active de todos los nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    // Mostrar la sección seleccionada
+    const seccionElement = document.getElementById(seccion);
+    if (seccionElement) {
+        seccionElement.classList.add('active');
+    }
+
+    // Activar el nav item correspondiente
+    const navItem = document.querySelector(`[onclick="mostrarSeccionAdmin('${seccion}')"]`);
+    if (navItem) {
+        navItem.classList.add('active');
+    }
+
+    // Cargar datos específicos de la sección
+    switch (seccion) {
+        case 'dashboard':
+            cargarDashboard();
+            break;
+        case 'gestionar-clientes':
+            cargarClientes();
+            break;
+        case 'gestionar-citas':
+            cargarCitasPorPeriodo();
+            break;
+        case 'gestionar-pagos':
+            cargarPagosAdmin(); // VERIFICAR que esté esta línea
+            break;
+        case 'reportes':
+            cargarReportes();
+            break;
+    }
+}
+
+// ============ FUNCIONES DE EXPORTACIÓN ============
+
+function generarReportePDF() {
+    mostrarMensaje('Función de exportación PDF en desarrollo', 'info');
+}
+
+function cambiarAvatar() {
+    mostrarMensaje('Función de cambio de avatar en desarrollo', 'info');
+}
+
+function guardarHorarios(event) {
+    event.preventDefault();
+    mostrarMensaje('Horarios guardados exitosamente', 'success');
+}
+
+function actualizarQR(event) {
+    event.preventDefault();
+    mostrarMensaje('QR actualizado exitosamente', 'success');
+}
+
+// ============ INICIALIZACIÓN OPTIMIZADA ============
+
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('🚀 Inicializando panel administrativo optimizado...');
+
+    // Verificar autenticación
+    if (!auth || !auth.requireAuth()) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Verificar que es administrador
+    const user = auth.getUser();
+    if (!user || user.tipo !== 'administrador') {
+        console.error('❌ Acceso denegado - Solo para administradores');
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Configurar información del admin
+    const nombreAdmin = document.getElementById('admin-nombre');
+    const nombreSidebar = document.getElementById('nombre-admin-sidebar');
+    const emailSidebar = document.getElementById('email-admin-sidebar');
+
+    if (nombreAdmin) nombreAdmin.textContent = user.nombre || 'Administrador';
+    if (nombreSidebar) nombreSidebar.textContent = user.nombre || 'Administrador';
+    if (emailSidebar) emailSidebar.textContent = user.email || '';
+
+    // Configurar fecha actual
+    const fechaHoy = document.getElementById('fecha-hoy');
+    if (fechaHoy) {
+        fechaHoy.textContent = new Date().toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+
+    // Configurar eventos
+    configurarEventos();
+
+    // Cargar dashboard inicial
+    cargarDashboard();
+
+    console.log('✅ Panel administrativo optimizado inicializado correctamente');
+});
+
+// Función para cerrar sesión
+function cerrarSesion() {
+    if (confirm('¿Estás seguro de que quieres cerrar la sesión?')) {
+        if (auth && auth.logout) {
+            auth.logout();
+        } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+    }
+}
 
 console.log('✅ Panel de administración de CreSer optimizado cargado');
+

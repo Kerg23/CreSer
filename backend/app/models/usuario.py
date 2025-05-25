@@ -26,7 +26,8 @@ class Usuario(Base):
     
     # SOLO relación que funciona
     citas = relationship("Cita", back_populates="usuario", lazy="select")
-    
+    pagos = relationship("Pago", back_populates="usuario", foreign_keys="Pago.usuario_id")  # AGREGADO
+    pagos_aprobados = relationship("Pago", back_populates="aprobador", foreign_keys="Pago.aprobado_por")  # AGREGADO
     def to_dict(self):
         return {
             'id': self.id,

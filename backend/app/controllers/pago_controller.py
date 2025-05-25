@@ -1,271 +1,320 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func, and_, or_
 from typing import List, Optional
-from datetime import date
+from datetime import datetime, timezone
 import logging
+import os
 
 from app.config.database import get_db
-from app.services.cita_service import CitaService
-from app.dto.cita_dto import CitaCreateDTO, CitaResponseDTO
-from app.utils.exceptions import BusinessException
-from app.utils.security import get_current_active_user, require_admin
+from app.models.pago import Pago
 from app.models.usuario import Usuario
-from app.models.servicio import Servicio
+from app.utils.security import get_current_active_user, require_admin
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# CRÍTICO: Rutas específicas ANTES que rutas con parámetros
-@router.get("/servicios-disponibles")
-async def obtener_servicios_disponibles(
-    db: Session = Depends(get_db)
-):
-    """Obtener servicios disponibles para agendar"""
-    try:
-        servicios = db.query(Servicio).filter(Servicio.estado == "activo").all()
-        return [
-            {
-                "id": servicio.id,
-                "codigo": servicio.codigo,
-                "nombre": servicio.nombre,
-                "descripcion": getattr(servicio, 'descripcion', ''),
-                "precio": float(servicio.precio),
-                "duracion_minutos": servicio.duracion_minutos,
-                "categoria": getattr(servicio, 'categoria', 'general')
-            }
-            for servicio in servicios
-        ]
-    except Exception as e:
-        logger.error(f"Error obteniendo servicios disponibles: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/horarios-disponibles")
-async def obtener_horarios_disponibles(
-    fecha: date = Query(..., description="Fecha en formato YYYY-MM-DD"),
-    servicio_id: int = Query(..., description="ID del servicio"),
-    db: Session = Depends(get_db)
-):
-    """Obtener horarios disponibles para una fecha y servicio"""
-    try:
-        cita_service = CitaService(db)
-        # Horarios predefinidos por ahora
-        horarios_base = ["08:00", "09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00"]
-        return {
-            "fecha": fecha.isoformat(),
-            "servicio_id": servicio_id,
-            "horarios_disponibles": horarios_base,
-            "total_disponibles": len(horarios_base)
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo horarios disponibles: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/mis-citas")
-async def obtener_mis_citas(
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user)
-):
-    """Obtener citas del usuario actual"""
-    try:
-        cita_service = CitaService(db)
-        return cita_service.obtener_citas_usuario(current_user.id)
-    except Exception as e:
-        logger.error(f"Error obteniendo mis citas: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/estadisticas")
-async def obtener_estadisticas_citas(
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
-):
-    """Obtener estadísticas de citas"""
-    try:
-        # Estadísticas básicas por ahora
-        return {
-            "total_citas": 0,
-            "citas_completadas": 0,
-            "citas_pendientes": 0,
-            "tasa_asistencia": 0
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo estadísticas: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/agenda-dia")
-async def obtener_agenda_del_dia(
-    fecha: date = Query(..., description="Fecha para ver la agenda"),
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
-):
-    """Obtener agenda del día para la psicóloga"""
-    try:
-        # Agenda básica por ahora
-        return {
-            "fecha": fecha.isoformat(),
-            "citas": [],
-            "total_citas": 0
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo agenda del día: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.post("/agendar", response_model=CitaResponseDTO, status_code=status.HTTP_201_CREATED)
-async def agendar_cita(
-    cita_dto: CitaCreateDTO,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user)
-):
-    """Agendar nueva cita - diferente lógica para admin vs cliente"""
-    try:
-        logger.info(f"📥 Datos recibidos: {cita_dto.dict()}")
-        logger.info(f"👤 Usuario actual: {current_user.email} (tipo: {current_user.tipo})")
-        
-        cita_service = CitaService(db)
-        
-        # CORREGIDO: Verificar si es admin o cliente
-        if current_user.tipo == "administrador":
-            # Los administradores pueden agendar citas sin validar créditos
-            logger.info(f"🔧 Admin {current_user.id} agendando cita para usuario {cita_dto.usuario_id}")
-            
-            # CORREGIDO: Verificar si usuario_id está presente
-            if not cita_dto.usuario_id:
-                logger.error("❌ usuario_id faltante en request de admin")
-                raise HTTPException(status_code=400, detail="usuario_id es requerido para administradores")
-            
-            # Verificar que el usuario objetivo existe
-            usuario_objetivo = db.query(Usuario).filter(Usuario.id == cita_dto.usuario_id).first()
-            if not usuario_objetivo:
-                logger.error(f"❌ Usuario {cita_dto.usuario_id} no encontrado")
-                raise HTTPException(status_code=404, detail="Usuario no encontrado")
-            
-            # Verificar que el servicio existe
-            servicio = db.query(Servicio).filter(Servicio.id == cita_dto.servicio_id).first()
-            if not servicio:
-                logger.error(f"❌ Servicio {cita_dto.servicio_id} no encontrado")
-                raise HTTPException(status_code=404, detail="Servicio no encontrado")
-            
-            logger.info(f"✅ Validaciones pasadas. Cliente: {usuario_objetivo.nombre}, Servicio: {servicio.nombre}")
-            
-            # Crear cita sin validar créditos (modo admin)
-            cita = cita_service.agendar_cita_admin(cita_dto, current_user.id)
-            
-        else:
-            # Los clientes deben tener créditos disponibles
-            logger.info(f"👤 Cliente {current_user.id} agendando cita")
-            # Para clientes, usar el ID del usuario actual
-            cita_dto.usuario_id = current_user.id
-            cita = cita_service.agendar_cita(cita_dto, current_user.id)
-        
-        logger.info(f"✅ Cita creada exitosamente: ID {cita.id}")
-        return cita
-        
-    except BusinessException as e:
-        logger.error(f"❌ Error de negocio agendando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Error inesperado agendando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/", response_model=List[CitaResponseDTO])
-async def listar_todas_las_citas(
-    fecha: Optional[date] = Query(None, description="Filtrar por fecha específica"),
+@router.get("/", response_model=List[dict])
+async def listar_pagos(
     estado: Optional[str] = Query(None, description="Filtrar por estado"),
-    usuario_id: Optional[int] = Query(None, description="Filtrar por usuario"),
-    periodo: Optional[str] = Query(None, description="Filtrar por período (hoy, semana, mes)"),
+    metodo_pago: Optional[str] = Query(None, description="Filtrar por método de pago"),
+    fecha_inicio: Optional[str] = Query(None, description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: Optional[str] = Query(None, description="Fecha fin (YYYY-MM-DD)"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
+    current_admin = Depends(require_admin)
 ):
-    """Listar todas las citas (solo administradores)"""
+    """Listar pagos con filtros avanzados"""
     try:
-        cita_service = CitaService(db)
-        return cita_service.listar_citas_admin(usuario_id, fecha, periodo, estado, skip, limit)
-    except Exception as e:
-        logger.error(f"Error listando citas: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-# IMPORTANTE: Rutas con parámetros AL FINAL para evitar conflictos
-@router.get("/{cita_id}", response_model=CitaResponseDTO)
-async def obtener_cita_por_id(
-    cita_id: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user)
-):
-    """Obtener cita por ID"""
-    try:
-        cita_service = CitaService(db)
-        cita = cita_service.obtener_cita_por_id(cita_id)
+        logger.info(f"Listando pagos con filtros: estado={estado}, método={metodo_pago}")
         
-        if not cita:
-            raise HTTPException(status_code=404, detail="Cita no encontrada")
+        query = db.query(Pago, Usuario).outerjoin(
+            Usuario, Pago.usuario_id == Usuario.id
+        )
         
-        # Verificar permisos: admin puede ver todas, cliente solo las suyas
-        if current_user.tipo != "administrador" and cita.usuario_id != current_user.id:
-            raise HTTPException(status_code=403, detail="No tienes permisos para ver esta cita")
+        # Aplicar filtros
+        if estado and estado != 'todos':
+            query = query.filter(Pago.estado == estado)
         
-        return cita
+        if metodo_pago:
+            query = query.filter(Pago.metodo_pago == metodo_pago)
+        
+        if fecha_inicio:
+            try:
+                fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+                query = query.filter(Pago.created_at >= fecha_inicio_dt)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Formato de fecha inicio inválido")
+        
+        if fecha_fin:
+            try:
+                fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+                query = query.filter(Pago.created_at <= fecha_fin_dt)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Formato de fecha fin inválido")
+        
+        pagos_raw = query.order_by(Pago.created_at.desc()).offset(skip).limit(limit).all()
+        
+        pagos_response = []
+        for pago, usuario in pagos_raw:
+            pago_dict = pago.to_dict()
+            if usuario:
+                pago_dict['usuario_nombre'] = usuario.nombre
+                pago_dict['usuario_email'] = usuario.email
+            pagos_response.append(pago_dict)
+        
+        logger.info(f"Retornando {len(pagos_response)} pagos")
+        return pagos_response
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error obteniendo cita: {e}")
-        raise HTTPException(status_code=500, detail="Error obteniendo cita")
+        logger.error(f"Error listando pagos: {e}")
+        raise HTTPException(status_code=500, detail="Error listando pagos")
 
-@router.put("/{cita_id}/confirmar", response_model=CitaResponseDTO)
-async def confirmar_cita(
-    cita_id: int,
-    notas: Optional[str] = Query(None, description="Notas de la psicóloga"),
-    link_virtual: Optional[str] = Query(None, description="Link para cita virtual"),
+@router.get("/estadisticas")
+async def obtener_estadisticas_pagos(
     db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
+    current_admin = Depends(require_admin)
 ):
-    """Confirmar cita (solo administradores)"""
+    """Obtener estadísticas de pagos para dashboard"""
     try:
-        cita_service = CitaService(db)
-        return cita_service.actualizar_estado_cita(cita_id, "confirmada", current_admin.id)
-    except BusinessException as e:
-        logger.error(f"Error confirmando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.info("Obteniendo estadísticas de pagos")
+        
+        # Estadísticas básicas
+        total_pagos = db.query(func.count(Pago.id)).scalar() or 0
+        pagos_pendientes = db.query(func.count(Pago.id)).filter(Pago.estado == 'pendiente').scalar() or 0
+        pagos_aprobados = db.query(func.count(Pago.id)).filter(Pago.estado == 'aprobado').scalar() or 0
+        pagos_rechazados = db.query(func.count(Pago.id)).filter(Pago.estado == 'rechazado').scalar() or 0
+        
+        # Montos
+        monto_total = db.query(func.sum(Pago.monto)).scalar() or 0
+        monto_aprobado = db.query(func.sum(Pago.monto)).filter(Pago.estado == 'aprobado').scalar() or 0
+        monto_pendiente = db.query(func.sum(Pago.monto)).filter(Pago.estado == 'pendiente').scalar() or 0
+        
+        # Tasa de aprobación
+        tasa_aprobacion = 0
+        if total_pagos > 0:
+            tasa_aprobacion = round((pagos_aprobados / total_pagos) * 100, 1)
+        
+        # Estadísticas por método de pago
+        metodos_stats = db.query(
+            Pago.metodo_pago,
+            func.count(Pago.id).label('cantidad'),
+            func.sum(Pago.monto).label('monto_total')
+        ).group_by(Pago.metodo_pago).all()
+        
+        estadisticas = {
+            "total_pagos": total_pagos,
+            "pagos_pendientes": pagos_pendientes,
+            "pagos_aprobados": pagos_aprobados,
+            "pagos_rechazados": pagos_rechazados,
+            "monto_total": float(monto_total),
+            "monto_aprobado": float(monto_aprobado),
+            "monto_pendiente": float(monto_pendiente),
+            "tasa_aprobacion": tasa_aprobacion,
+            "metodos_pago": [
+                {
+                    "metodo": metodo.metodo_pago,
+                    "cantidad": metodo.cantidad,
+                    "monto": float(metodo.monto_total or 0)
+                }
+                for metodo in metodos_stats
+            ]
+        }
+        
+        logger.info(f"Estadísticas calculadas: {estadisticas}")
+        return estadisticas
+        
     except Exception as e:
-        logger.error(f"Error inesperado confirmando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        logger.error(f"Error obteniendo estadísticas de pagos: {e}")
+        raise HTTPException(status_code=500, detail="Error obteniendo estadísticas")
 
-@router.put("/{cita_id}/completar", response_model=CitaResponseDTO)
-async def completar_cita(
-    cita_id: int,
-    notas_sesion: str = Query(..., description="Notas de la sesión"),
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def crear_pago(
+    pago_data: dict,
     db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
+    current_user = Depends(get_current_active_user)
 ):
-    """Marcar cita como completada (solo administradores)"""
+    """Crear un nuevo pago"""
     try:
-        cita_service = CitaService(db)
-        return cita_service.completar_cita(cita_id, notas_sesion, current_admin.id)
-    except BusinessException as e:
-        logger.error(f"Error completando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.info(f"Creando nuevo pago: {pago_data}")
+        
+        nuevo_pago = Pago(
+            usuario_id=pago_data.get('usuario_id'),
+            nombre_pagador=pago_data['nombre_pagador'],
+            email_pagador=pago_data['email_pagador'],
+            telefono_pagador=pago_data.get('telefono_pagador'),
+            documento_pagador=pago_data.get('documento_pagador'),
+            monto=pago_data['monto'],
+            concepto=pago_data['concepto'],
+            metodo_pago=pago_data.get('metodo_pago', 'qr'),
+            tipo_compra=pago_data['tipo_compra'],
+            referencia_bancaria=pago_data.get('referencia_bancaria'),
+            estado='pendiente'
+        )
+        
+        db.add(nuevo_pago)
+        db.commit()
+        db.refresh(nuevo_pago)
+        
+        logger.info(f"Pago {nuevo_pago.id} creado exitosamente")
+        return nuevo_pago.to_dict()
+        
     except Exception as e:
-        logger.error(f"Error inesperado completando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        db.rollback()
+        logger.error(f"Error creando pago: {e}")
+        raise HTTPException(status_code=500, detail="Error creando pago")
 
-@router.put("/{cita_id}/cancelar", response_model=CitaResponseDTO)
-async def cancelar_cita(
-    cita_id: int,
-    motivo: str = Query(..., description="Motivo de la cancelación"),
+@router.put("/{pago_id}/aprobar")
+async def aprobar_pago(
+    pago_id: int,
+    notas_admin: Optional[str] = Query(None, description="Notas del administrador"),
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user)
+    current_admin = Depends(require_admin)
 ):
-    """Cancelar cita (restaura créditos)"""
+    """Aprobar un pago"""
     try:
-        cita_service = CitaService(db)
-        return cita_service.cancelar_cita(cita_id, motivo, current_user.id)
-    except BusinessException as e:
-        logger.error(f"Error cancelando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.info(f"Aprobando pago {pago_id} por admin {current_admin.id}")
+        
+        pago = db.query(Pago).filter(Pago.id == pago_id).first()
+        if not pago:
+            raise HTTPException(status_code=404, detail="Pago no encontrado")
+        
+        if pago.estado != 'pendiente':
+            raise HTTPException(status_code=400, detail="Solo se pueden aprobar pagos pendientes")
+        
+        pago.estado = 'aprobado'
+        pago.notas_admin = notas_admin or f"Aprobado por {current_admin.nombre}"
+        pago.fecha_aprobacion = datetime.now(timezone.utc)
+        pago.aprobado_por = current_admin.id
+        pago.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        
+        logger.info(f"Pago {pago_id} aprobado exitosamente")
+        return pago.to_dict()
+        
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
-        logger.error(f"Error inesperado cancelando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        db.rollback()
+        logger.error(f"Error aprobando pago: {e}")
+        raise HTTPException(status_code=500, detail="Error aprobando pago")
+
+@router.put("/{pago_id}/rechazar")
+async def rechazar_pago(
+    pago_id: int,
+    motivo: str = Query(..., description="Motivo del rechazo"),
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
+):
+    """Rechazar un pago"""
+    try:
+        logger.info(f"Rechazando pago {pago_id} por admin {current_admin.id}")
+        
+        pago = db.query(Pago).filter(Pago.id == pago_id).first()
+        if not pago:
+            raise HTTPException(status_code=404, detail="Pago no encontrado")
+        
+        if pago.estado != 'pendiente':
+            raise HTTPException(status_code=400, detail="Solo se pueden rechazar pagos pendientes")
+        
+        pago.estado = 'rechazado'
+        pago.notas_admin = f"Rechazado por {current_admin.nombre}: {motivo}"
+        pago.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        
+        logger.info(f"Pago {pago_id} rechazado exitosamente")
+        return pago.to_dict()
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error rechazando pago: {e}")
+        raise HTTPException(status_code=500, detail="Error rechazando pago")
+
+@router.get("/{pago_id}")
+async def obtener_pago(
+    pago_id: int,
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
+):
+    """Obtener detalles de un pago específico"""
+    try:
+        pago = db.query(Pago, Usuario).outerjoin(
+            Usuario, Pago.usuario_id == Usuario.id
+        ).filter(Pago.id == pago_id).first()
+        
+        if not pago:
+            raise HTTPException(status_code=404, detail="Pago no encontrado")
+        
+        pago_obj, usuario = pago
+        pago_dict = pago_obj.to_dict()
+        
+        if usuario:
+            pago_dict['usuario_nombre'] = usuario.nombre
+            pago_dict['usuario_email'] = usuario.email
+            pago_dict['usuario_telefono'] = usuario.telefono
+        
+        return pago_dict
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error obteniendo pago {pago_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error obteniendo pago")
+
+@router.post("/{pago_id}/comprobante")
+async def subir_comprobante(
+    pago_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """Subir comprobante de pago"""
+    try:
+        logger.info(f"Subiendo comprobante para pago {pago_id}")
+        
+        pago = db.query(Pago).filter(Pago.id == pago_id).first()
+        if not pago:
+            raise HTTPException(status_code=404, detail="Pago no encontrado")
+        
+        # Validar tipo de archivo
+        allowed_types = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="Tipo de archivo no permitido")
+        
+        # Crear directorio si no existe
+        upload_dir = "uploads/comprobantes"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Guardar archivo
+        filename = f"comprobante_{pago_id}_{int(datetime.now().timestamp())}_{file.filename}"
+        filepath = os.path.join(upload_dir, filename)
+        
+        with open(filepath, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Actualizar pago
+        pago.comprobante = filename
+        pago.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        
+        logger.info(f"Comprobante subido exitosamente: {filename}")
+        return {"message": "Comprobante subido exitosamente", "filename": filename}
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error subiendo comprobante: {e}")
+        raise HTTPException(status_code=500, detail="Error subiendo comprobante")

@@ -227,16 +227,6 @@
                                     </div>
                                 </div>
 
-                                <div class="calendario-admin">
-                                    <div class="calendario-header">
-                                        <button onclick="mesAnterior()">&lt;</button>
-                                        <h3 id="mes-actual">Mayo 2025</h3>
-                                        <button onclick="mesSiguiente()">&gt;</button>
-                                    </div>
-                                    <div class="calendario-grid" id="calendario-grid">
-                                        <!-- Se genera dinámicamente -->
-                                    </div>
-                                </div>
 
                                 <div class="citas-lista-admin">
                                     <h3>Citas del Período Seleccionado</h3>
@@ -245,190 +235,191 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- Gestionar Pagos -->
-                            <div id="gestionar-pagos" class="content-section">
-                                <div class="section-header">
-                                    <h2>Gestionar Pagos</h2>
-                                    <div class="header-actions">
-                                        <select id="filtro-estado-pago">
-                                            <option value="todos">Todos</option>
-                                            <option value="pendiente">Pendientes</option>
-                                            <option value="aprobado">Aprobados</option>
-                                            <option value="rechazado">Rechazados</option>
-                                        </select>
-                                        <button class="btn-actualizar" onclick="cargarPagosAdmin()"
-                                            style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                            <i class="fas fa-sync-alt"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="pagos-resumen" id="pagos-resumen">
-                                    <div class="resumen-card">
-                                        <h4>Total Pagos</h4>
-                                        <span id="total-pagos">0</span>
-                                    </div>
-                                    <div class="resumen-card">
-                                        <h4>Pendientes</h4>
-                                        <span id="pagos-pendientes-count">0</span>
-                                    </div>
-                                    <div class="resumen-card">
-                                        <h4>Aprobados</h4>
-                                        <span id="pagos-aprobados-count">0</span>
-                                    </div>
-                                    <div class="resumen-card">
-                                        <h4>Monto Total</h4>
-                                        <span id="monto-total-pagos">$0</span>
-                                    </div>
-                                </div>
-
-                                <div class="pagos-admin-tabla">
-                                    <table class="tabla-admin">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Cliente</th>
-                                                <th>Concepto</th>
-                                                <th>Método</th>
-                                                <th>Monto</th>
-                                                <th>Fecha</th>
-                                                <th>Estado</th>
-                                                <th>Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="tabla-pagos-body">
-                                            <tr>
-                                                <td colspan="8" class="loading">Cargando pagos...</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                        <!-- Gestionar Pagos -->
+                        <div id="gestionar-pagos" class="content-section">
+                            <div class="section-header">
+                                <h2>Gestionar Pagos</h2>
+                                <div class="header-actions">
+                                    <select id="filtro-estado-pago">
+                                        <option value="todos">Todos</option>
+                                        <option value="pendiente">Pendientes</option>
+                                        <option value="aprobado">Aprobados</option>
+                                        <option value="rechazado">Rechazados</option>
+                                    </select>
+                                    <button class="btn-actualizar" onclick="cargarPagosAdmin()"
+                                        style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Reportes -->
-                            <div id="reportes" class="content-section">
-                                <div class="section-header">
-                                    <h2>Reportes y Análisis</h2>
-                                    <div class="header-actions">
-                                        <select id="periodo-reporte">
-                                            <option value="mes">Este Mes</option>
-                                            <option value="trimestre">Este Trimestre</option>
-                                            <option value="semestre">Este Semestre</option>
-                                            <option value="año">Este Año</option>
-                                        </select>
-                                        <button onclick="generarReportePDF()" class="btn-exportar">
-                                            <i class="fas fa-file-pdf"></i> Exportar PDF
-                                        </button>
-                                        <button onclick="cargarReportes()" class="btn-actualizar">
-                                            <i class="fas fa-sync-alt"></i> Actualizar
-                                        </button>
-                                    </div>
+                            <div class="pagos-resumen" id="pagos-resumen">
+                                <div class="resumen-card">
+                                    <h4>Total Pagos</h4>
+                                    <span id="total-pagos">0</span>
                                 </div>
-
-                                <div class="reportes-metricas" id="reportes-metricas">
-                                    <div class="metrica-card">
-                                        <h4>Ingresos Totales</h4>
-                                        <span id="ingresos-totales-reporte">$0</span>
-                                        <small id="variacion-ingresos">+0%</small>
-                                    </div>
-                                    <div class="metrica-card">
-                                        <h4>Clientes Nuevos</h4>
-                                        <span id="clientes-nuevos-reporte">0</span>
-                                        <small id="variacion-clientes">+0%</small>
-                                    </div>
-                                    <div class="metrica-card">
-                                        <h4>Citas Realizadas</h4>
-                                        <span id="citas-realizadas-reporte">0</span>
-                                        <small id="variacion-citas">+0%</small>
-                                    </div>
-                                    <div class="metrica-card">
-                                        <h4>Tasa de Conversión</h4>
-                                        <span id="tasa-conversion-reporte">0%</span>
-                                        <small id="variacion-conversion">+0%</small>
-                                    </div>
+                                <div class="resumen-card">
+                                    <h4>Pendientes</h4>
+                                    <span id="pagos-pendientes-count">0</span>
                                 </div>
-
-                                <div class="reportes-grid">
-                                    <div class="reporte-card">
-                                        <h3>Ingresos por Mes</h3>
-                                        <div class="chart-container">
-                                            <canvas id="chartIngresosMes" width="400" height="200"></canvas>
-                                        </div>
-                                    </div>
-                                    <div class="reporte-card">
-                                        <h3>Servicios Más Solicitados</h3>
-                                        <div class="chart-container">
-                                            <canvas id="chartServiciosPopulares" width="400" height="200"></canvas>
-                                        </div>
-                                    </div>
+                                <div class="resumen-card">
+                                    <h4>Aprobados</h4>
+                                    <span id="pagos-aprobados-count">0</span>
+                                </div>
+                                <div class="resumen-card">
+                                    <h4>Monto Total</h4>
+                                    <span id="monto-total-pagos">$0</span>
                                 </div>
                             </div>
 
-                            <!-- Configuración del Sistema -->
-                            <div id="configuracion-sistema" class="content-section">
-                                <div class="section-header">
-                                    <h2>Configuración del Sistema</h2>
-                                </div>
-                                <div class="config-admin-grid">
-                                    <div class="config-admin-card">
-                                        <h3>Horarios de Atención</h3>
-                                        <form id="form-horarios" onsubmit="guardarHorarios(event)">
-                                            <div class="horario-dia">
-                                                <label>Lunes:</label>
-                                                <input type="time" name="lunes_inicio" value="08:00"> -
-                                                <input type="time" name="lunes_fin" value="17:00">
-                                            </div>
-                                            <div class="horario-dia">
-                                                <label>Martes:</label>
-                                                <input type="time" name="martes_inicio" value="08:00"> -
-                                                <input type="time" name="martes_fin" value="17:00">
-                                            </div>
-                                            <div class="horario-dia">
-                                                <label>Miércoles:</label>
-                                                <input type="time" name="miercoles_inicio" value="08:00"> -
-                                                <input type="time" name="miercoles_fin" value="17:00">
-                                            </div>
-                                            <div class="horario-dia">
-                                                <label>Jueves:</label>
-                                                <input type="time" name="jueves_inicio" value="08:00"> -
-                                                <input type="time" name="jueves_fin" value="17:00">
-                                            </div>
-                                            <div class="horario-dia">
-                                                <label>Viernes:</label>
-                                                <input type="time" name="viernes_inicio" value="08:00"> -
-                                                <input type="time" name="viernes_fin" value="17:00">
-                                            </div>
-                                            <div class="horario-dia">
-                                                <label>Sábado:</label>
-                                                <input type="time" name="sabado_inicio" value="08:00"> -
-                                                <input type="time" name="sabado_fin" value="12:00">
-                                            </div>
-                                            <button type="submit">Guardar Horarios</button>
-                                        </form>
-                                    </div>
+                            <div class="pagos-admin-tabla">
+                                <table class="tabla-admin">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Cliente</th>
+                                            <th>Concepto</th>
+                                            <th>Método</th>
+                                            <th>Monto</th>
+                                            <th>Fecha</th>
+                                            <th>Estado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabla-pagos-body">
+                                        <tr>
+                                            <td colspan="8" class="loading">Cargando pagos...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
-                                    <div class="config-admin-card">
-                                        <h3>Información de Pago QR</h3>
-                                        <form id="form-qr" onsubmit="actualizarQR(event)">
-                                            <div class="form-group">
-                                                <label>Imagen QR Actual:</label>
-                                                <img src="recursos/qr.jpg" alt="QR Actual" class="qr-preview"
-                                                    id="qr-preview"
-                                                    onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJ3aGl0ZSIvPgo8dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJibGFjayIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UVIgQ3JlU2VyPC90ZXh0Pgo8L3N2Zz4='">
-                                            </div>
-                                            <div class="form-group">
-                                                <label>Cambiar QR:</label>
-                                                <input type="file" name="qr_image" accept="image/*">
-                                            </div>
-                                            <button type="submit">Actualizar QR</button>
-                                        </form>
+                        <!-- Reportes -->
+                        <div id="reportes" class="content-section">
+                            <div class="section-header">
+                                <h2>Reportes y Análisis</h2>
+                                <div class="header-actions">
+                                    <select id="periodo-reporte">
+                                        <option value="mes">Este Mes</option>
+                                        <option value="trimestre">Este Trimestre</option>
+                                        <option value="semestre">Este Semestre</option>
+                                        <option value="año">Este Año</option>
+                                    </select>
+                                    <button onclick="generarReportePDF()" class="btn-exportar">
+                                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                                    </button>
+                                    <button onclick="cargarReportes()" class="btn-actualizar">
+                                        <i class="fas fa-sync-alt"></i> Actualizar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="reportes-metricas" id="reportes-metricas">
+                                <div class="metrica-card">
+                                    <h4>Ingresos Totales</h4>
+                                    <span id="ingresos-totales-reporte">$0</span>
+                                    <small id="variacion-ingresos">+0%</small>
+                                </div>
+                                <div class="metrica-card">
+                                    <h4>Clientes Nuevos</h4>
+                                    <span id="clientes-nuevos-reporte">0</span>
+                                    <small id="variacion-clientes">+0%</small>
+                                </div>
+                                <div class="metrica-card">
+                                    <h4>Citas Realizadas</h4>
+                                    <span id="citas-realizadas-reporte">0</span>
+                                    <small id="variacion-citas">+0%</small>
+                                </div>
+                                <div class="metrica-card">
+                                    <h4>Tasa de Conversión</h4>
+                                    <span id="tasa-conversion-reporte">0%</span>
+                                    <small id="variacion-conversion">+0%</small>
+                                </div>
+                            </div>
+
+                            <div class="reportes-grid">
+                                <div class="reporte-card">
+                                    <h3>Ingresos por Mes</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartIngresosMes" width="400" height="200"></canvas>
                                     </div>
+                                </div>
+                                <div class="reporte-card">
+                                    <h3>Servicios Más Solicitados</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartServiciosPopulares" width="400" height="200"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuración del Sistema -->
+                        <div id="configuracion-sistema" class="content-section">
+                            <div class="section-header">
+                                <h2>Configuración del Sistema</h2>
+                            </div>
+                            <div class="config-admin-grid">
+                                <div class="config-admin-card">
+                                    <h3>Horarios de Atención</h3>
+                                    <form id="form-horarios" onsubmit="guardarHorarios(event)">
+                                        <div class="horario-dia">
+                                            <label>Lunes:</label>
+                                            <input type="time" name="lunes_inicio" value="08:00"> -
+                                            <input type="time" name="lunes_fin" value="17:00">
+                                        </div>
+                                        <div class="horario-dia">
+                                            <label>Martes:</label>
+                                            <input type="time" name="martes_inicio" value="08:00"> -
+                                            <input type="time" name="martes_fin" value="17:00">
+                                        </div>
+                                        <div class="horario-dia">
+                                            <label>Miércoles:</label>
+                                            <input type="time" name="miercoles_inicio" value="08:00"> -
+                                            <input type="time" name="miercoles_fin" value="17:00">
+                                        </div>
+                                        <div class="horario-dia">
+                                            <label>Jueves:</label>
+                                            <input type="time" name="jueves_inicio" value="08:00"> -
+                                            <input type="time" name="jueves_fin" value="17:00">
+                                        </div>
+                                        <div class="horario-dia">
+                                            <label>Viernes:</label>
+                                            <input type="time" name="viernes_inicio" value="08:00"> -
+                                            <input type="time" name="viernes_fin" value="17:00">
+                                        </div>
+                                        <div class="horario-dia">
+                                            <label>Sábado:</label>
+                                            <input type="time" name="sabado_inicio" value="08:00"> -
+                                            <input type="time" name="sabado_fin" value="12:00">
+                                        </div>
+                                        <button type="submit">Guardar Horarios</button>
+                                    </form>
+                                </div>
+
+                                <div class="config-admin-card">
+                                    <h3>Información de Pago QR</h3>
+                                    <form id="form-qr" onsubmit="actualizarQR(event)">
+                                        <div class="form-group">
+                                            <label>Imagen QR Actual:</label>
+                                            <img src="recursos/qr.jpg" alt="QR Actual" class="qr-preview"
+                                                id="qr-preview"
+                                                onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJ3aGl0ZSIvPgo8dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJibGFjayIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UVIgQ3JlU2VyPC90ZXh0Pgo8L3N2Zz4='">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Cambiar QR:</label>
+                                            <input type="file" name="qr_image" accept="image/*">
+                                        </div>
+                                        <button type="submit">Actualizar QR</button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
         </section>
     </main>
 
