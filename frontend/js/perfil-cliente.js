@@ -231,14 +231,14 @@ function llenarDatosUsuario(usuario) {
     }
 }
 
-// ============ GESTIÓN DE CRÉDITOS ============
+// ============ GESTIÓN DE CRÉDITOS REALES ============
 
 async function cargarCreditos() {
     const operation = 'cargar-creditos';
     
     try {
         LoadingManager.start(operation);
-        console.log('🔄 Cargando créditos...');
+        console.log('🔄 Cargando créditos reales de la base de datos...');
         
         // Verificar cache
         const cached = CacheManager.get('usuario-creditos');
@@ -247,41 +247,29 @@ async function cargarCreditos() {
             console.log('✅ Créditos cargados desde cache');
         }
         
-        // Intentar cargar datos reales
-        try {
-            const creditos = await apiRequest('/creditos/mis-creditos');
-            CacheManager.set('usuario-creditos', creditos);
-            renderizarCreditos(creditos);
-        } catch (error) {
-            console.warn('⚠️ No se pudieron cargar créditos reales, usando datos de ejemplo');
-            
-            // Datos de ejemplo para MVP
-            const creditosEjemplo = [
-                {
-                    id: 1,
-                    servicio_nombre: 'Psicoterapia Individual',
-                    codigo: 'PSICO_IND',
-                    cantidad_inicial: 4,
-                    cantidad_disponible: 2,
-                    duracion: 60,
-                    fecha_vencimiento: '2025-08-25'
-                },
-                {
-                    id: 2,
-                    servicio_nombre: 'Orientación Familiar',
-                    codigo: 'ORIENT_FAM',
-                    cantidad_inicial: 2,
-                    cantidad_disponible: 1,
-                    duracion: 90,
-                    fecha_vencimiento: '2025-07-15'
-                }
-            ];
-            
-            renderizarCreditos(creditosEjemplo);
-        }
+        // CORREGIDO: Cargar créditos reales
+        const creditos = await apiRequest('/usuarios/creditos');
+        console.log('✅ Créditos reales recibidos:', creditos);
+        
+        CacheManager.set('usuario-creditos', creditos);
+        renderizarCreditos(creditos);
         
     } catch (error) {
-        ErrorHandler.handle(error, operation);
+        console.error('❌ Error cargando créditos:', error);
+        
+        // Mostrar mensaje de error en lugar de datos de ejemplo
+        const container = document.getElementById('lista-creditos');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #dc3545;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <h4>Error cargando créditos</h4>
+                    <p>No se pudieron cargar tus créditos desde la base de datos.</p>
+                    <button onclick="cargarCreditos()" class="btn-actualizar">Reintentar</button>
+                </div>
+            `;
+        }
+        actualizarResumenCreditos(0, 0, 0);
     } finally {
         LoadingManager.end(operation);
     }
@@ -291,15 +279,20 @@ function renderizarCreditos(creditos) {
     const container = document.getElementById('lista-creditos');
     if (!container) return;
     
+    console.log('🎨 Renderizando créditos reales:', creditos);
+    
     if (!creditos || creditos.length === 0) {
         container.innerHTML = '<p class="sin-creditos">No tienes créditos disponibles. <a href="comprar.html">Comprar créditos</a></p>';
         actualizarResumenCreditos(0, 0, 0);
         return;
     }
     
-    // Calcular resumen
-    const totalCreditos = creditos.reduce((sum, c) => sum + (c.cantidad_disponible || 0), 0);
-    const creditosUsados = creditos.reduce((sum, c) => sum + ((c.cantidad_inicial || 0) - (c.cantidad_disponible || 0)), 0);
+    // Calcular resumen con datos reales
+    const totalCreditos = creditos.reduce((sum, c) => sum + (c.cantidad_inicial || 0), 0);
+    const creditosDisponibles = creditos.reduce((sum, c) => sum + (c.cantidad_disponible || 0), 0);
+    const creditosUsados = creditos.reduce((sum, c) => sum + (c.cantidad_usada || (c.cantidad_inicial - c.cantidad_disponible) || 0), 0);
+    
+    // Calcular próximos a vencer (30 días)
     const proximosVencer = creditos.filter(c => {
         if (!c.fecha_vencimiento) return false;
         const vencimiento = new Date(c.fecha_vencimiento);
@@ -308,31 +301,40 @@ function renderizarCreditos(creditos) {
         return diasDiferencia <= 30 && diasDiferencia > 0;
     }).reduce((sum, c) => sum + (c.cantidad_disponible || 0), 0);
     
-    actualizarResumenCreditos(totalCreditos, creditosUsados, proximosVencer);
+    actualizarResumenCreditos(creditosDisponibles, creditosUsados, proximosVencer);
     
-    // Renderizar lista
+    // Renderizar lista de créditos reales
     const fragment = document.createDocumentFragment();
     
     creditos.forEach(credito => {
         const creditoElement = document.createElement('div');
         creditoElement.className = 'credito-item';
+        
+        // Calcular porcentaje de uso
+        const porcentajeUso = credito.cantidad_inicial > 0 
+            ? ((credito.cantidad_disponible || 0) / credito.cantidad_inicial) * 100 
+            : 0;
+        
         creditoElement.innerHTML = `
             <div class="credito-info">
                 <h4>${credito.servicio_nombre || credito.nombre || 'Servicio'}</h4>
-                <p>Código: ${credito.servicio || credito.codigo || 'N/A'}</p>
-                <p>Duración: ${credito.duracion || 60} minutos</p>
-                ${credito.fecha_vencimiento ? `<p>Vence: ${formatearFecha(credito.fecha_vencimiento)}</p>` : ''}
+                <p><strong>Código:</strong> ${credito.servicio_codigo || credito.codigo || 'N/A'}</p>
+                <p><strong>Duración:</strong> ${credito.duracion || 60} minutos</p>
+                ${credito.precio_unitario ? `<p><strong>Precio unitario:</strong> ${formatearPrecio(credito.precio_unitario)}</p>` : ''}
+                ${credito.fecha_vencimiento ? `<p><strong>Vence:</strong> ${formatearFecha(credito.fecha_vencimiento)}</p>` : '<p><strong>Sin vencimiento</strong></p>'}
+                ${credito.fecha_compra ? `<p><small>Comprado: ${formatearFecha(credito.fecha_compra)}</small></p>` : ''}
             </div>
             <div class="credito-cantidad">
                 <span class="cantidad-disponible">${credito.cantidad_disponible || 0}</span>
                 <span class="cantidad-total">de ${credito.cantidad_inicial || 0}</span>
                 <div class="progreso-credito">
-                    <div class="progreso-barra" style="width: ${((credito.cantidad_disponible || 0) / (credito.cantidad_inicial || 1)) * 100}%"></div>
+                    <div class="progreso-barra" style="width: ${porcentajeUso}%; background: ${porcentajeUso > 50 ? '#28a745' : porcentajeUso > 20 ? '#ffc107' : '#dc3545'};"></div>
                 </div>
+                <small>${Math.round(porcentajeUso)}% disponible</small>
             </div>
             <div class="credito-acciones">
                 <button class="btn-usar-credito" onclick="usarCredito(${credito.id})" ${(credito.cantidad_disponible || 0) === 0 ? 'disabled' : ''}>
-                    Usar Crédito
+                    ${(credito.cantidad_disponible || 0) === 0 ? 'Agotado' : 'Usar Crédito'}
                 </button>
             </div>
         `;
@@ -341,6 +343,8 @@ function renderizarCreditos(creditos) {
     
     container.innerHTML = '';
     container.appendChild(fragment);
+    
+    console.log('✅ Créditos reales renderizados exitosamente');
 }
 
 function actualizarResumenCreditos(total, usados, proximos) {
@@ -356,14 +360,14 @@ function actualizarResumenCreditos(total, usados, proximos) {
     });
 }
 
-// ============ GESTIÓN DE CITAS ============
+// ============ GESTIÓN DE CITAS REALES ============
 
 async function cargarMisCitas() {
     const operation = 'cargar-citas';
     
     try {
         LoadingManager.start(operation);
-        console.log('🔄 Cargando mis citas...');
+        console.log('🔄 Cargando citas reales de la base de datos...');
         
         // Verificar cache
         const cached = CacheManager.get('usuario-citas');
@@ -372,41 +376,29 @@ async function cargarMisCitas() {
             console.log('✅ Citas cargadas desde cache');
         }
         
-        // Intentar cargar datos reales
-        try {
-            const citas = await apiRequest('/citas/mis-citas');
-            CacheManager.set('usuario-citas', citas);
-            renderizarCitas(citas);
-        } catch (error) {
-            console.warn('⚠️ No se pudieron cargar citas reales, usando datos de ejemplo');
-            
-            // Datos de ejemplo para MVP
-            const citasEjemplo = [
-                {
-                    id: 1,
-                    fecha: '2025-05-28',
-                    hora: '10:00',
-                    servicio_nombre: 'Psicoterapia Individual',
-                    modalidad: 'presencial',
-                    estado: 'confirmada',
-                    comentarios_cliente: 'Primera sesión'
-                },
-                {
-                    id: 2,
-                    fecha: '2025-05-15',
-                    hora: '15:30',
-                    servicio_nombre: 'Orientación Familiar',
-                    modalidad: 'virtual',
-                    estado: 'completada',
-                    link_virtual: 'https://meet.google.com/abc-def-ghi'
-                }
-            ];
-            
-            renderizarCitas(citasEjemplo);
-        }
+        // CORREGIDO: Cargar citas reales
+        const citas = await apiRequest('/citas/mis-citas');
+        console.log('✅ Citas reales recibidas:', citas);
+        
+        CacheManager.set('usuario-citas', citas);
+        renderizarCitas(citas);
         
     } catch (error) {
-        ErrorHandler.handle(error, operation);
+        console.error('❌ Error cargando citas:', error);
+        
+        // Mostrar mensaje de error
+        const container = document.getElementById('lista-citas');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #dc3545;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <h4>Error cargando citas</h4>
+                    <p>No se pudieron cargar tus citas desde la base de datos.</p>
+                    <button onclick="cargarMisCitas()" class="btn-actualizar">Reintentar</button>
+                </div>
+            `;
+        }
+        actualizarResumenCitas(0, 0, 0, 0);
     } finally {
         LoadingManager.end(operation);
     }
@@ -451,9 +443,12 @@ function renderizarCitas(citas) {
             </div>
             <div class="cita-info">
                 <h4>${cita.servicio_nombre || 'Servicio'}</h4>
-                <p>Modalidad: ${cita.modalidad || 'Presencial'}</p>
-                <p>Estado: <span class="estado ${cita.estado}">${cita.estado}</span></p>
-                ${cita.comentarios_cliente ? `<p>Comentarios: ${cita.comentarios_cliente}</p>` : ''}
+                <p><strong>Código:</strong> ${cita.servicio_codigo || 'N/A'}</p>
+                <p><strong>Modalidad:</strong> ${cita.modalidad || 'Presencial'}</p>
+                <p><strong>Estado:</strong> <span class="estado ${cita.estado}">${cita.estado}</span></p>
+                ${cita.servicio_precio ? `<p><strong>Precio:</strong> ${formatearPrecio(cita.servicio_precio)}</p>` : ''}
+                ${cita.servicio_duracion ? `<p><strong>Duración:</strong> ${cita.servicio_duracion} minutos</p>` : ''}
+                ${cita.comentarios_cliente ? `<p><strong>Comentarios:</strong> ${cita.comentarios_cliente}</p>` : ''}
                 ${cita.link_virtual ? `<p><a href="${cita.link_virtual}" target="_blank">Enlace virtual</a></p>` : ''}
             </div>
             <div class="cita-acciones">
@@ -484,14 +479,14 @@ function actualizarResumenCitas(total, proximas, completadas, canceladas) {
     });
 }
 
-// ============ GESTIÓN DE PAGOS ============
+// ============ GESTIÓN DE PAGOS REALES ============
 
 async function cargarHistorialPagos() {
     const operation = 'cargar-pagos';
     
     try {
         LoadingManager.start(operation);
-        console.log('🔄 Cargando historial de pagos...');
+        console.log('🔄 Cargando historial de pagos reales...');
         
         // Verificar cache
         const cached = CacheManager.get('usuario-pagos');
@@ -500,41 +495,29 @@ async function cargarHistorialPagos() {
             console.log('✅ Pagos cargados desde cache');
         }
         
-        // Intentar cargar datos reales
-        try {
-            const response = await apiRequest('/pagos/mis-pagos');
-            const pagos = response.pagos || response || [];
-            
-            CacheManager.set('usuario-pagos', pagos);
-            renderizarHistorialPagos(pagos);
-        } catch (error) {
-            console.warn('⚠️ No se pudieron cargar pagos reales, usando datos de ejemplo');
-            
-            // Datos de ejemplo para MVP
-            const pagosEjemplo = [
-                {
-                    id: 1,
-                    fecha: '2025-05-20',
-                    concepto: 'Paquete Psicoterapia 4 Sesiones',
-                    metodo: 'QR',
-                    monto: 260000,
-                    estado: 'aprobado'
-                },
-                {
-                    id: 2,
-                    fecha: '2025-05-10',
-                    concepto: 'Orientación Familiar',
-                    metodo: 'QR',
-                    monto: 110000,
-                    estado: 'pendiente'
-                }
-            ];
-            
-            renderizarHistorialPagos(pagosEjemplo);
-        }
+        // CORREGIDO: Cargar pagos reales
+        const pagos = await apiRequest('/pagos/mis-pagos');
+        console.log('✅ Pagos reales recibidos:', pagos);
+        
+        CacheManager.set('usuario-pagos', pagos);
+        renderizarHistorialPagos(pagos);
         
     } catch (error) {
-        ErrorHandler.handle(error, operation);
+        console.error('❌ Error cargando pagos:', error);
+        
+        // Mostrar mensaje de error
+        const container = document.getElementById('lista-pagos');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #dc3545;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <h4>Error cargando pagos</h4>
+                    <p>No se pudieron cargar tus pagos desde la base de datos.</p>
+                    <button onclick="cargarHistorialPagos()" class="btn-actualizar">Reintentar</button>
+                </div>
+            `;
+        }
+        actualizarResumenPagos(0, 0, '-');
     } finally {
         LoadingManager.end(operation);
     }
@@ -574,9 +557,10 @@ function renderizarHistorialPagos(pagos) {
             </div>
             <div class="pago-info">
                 <h4>${pago.concepto}</h4>
-                <p>Monto: ${formatearPrecio(pago.monto)}</p>
-                <p>Estado: <span class="estado ${pago.estado}">${pago.estado}</span></p>
-                ${pago.referencia ? `<p>Referencia: ${pago.referencia}</p>` : ''}
+                <p><strong>Monto:</strong> ${formatearPrecio(pago.monto)}</p>
+                <p><strong>Estado:</strong> <span class="estado ${pago.estado}">${pago.estado}</span></p>
+                ${pago.referencia ? `<p><strong>Referencia:</strong> ${pago.referencia}</p>` : ''}
+                ${pago.tipo_compra ? `<p><strong>Tipo:</strong> ${pago.tipo_compra}</p>` : ''}
             </div>
             <div class="pago-acciones">
                 <button class="btn-ver-detalle" onclick="verDetallePago(${pago.id})">Ver Detalles</button>

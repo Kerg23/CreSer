@@ -383,3 +383,55 @@ async def eliminar_usuario(
         db.rollback()
         logger.error(f"Error eliminando usuario {usuario_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error eliminando usuario: {str(e)}")
+
+
+
+@router.get("/creditos")
+async def obtener_creditos_usuario(
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Obtener créditos detallados del usuario"""
+    try:
+        # Verificar si existe tabla creditos
+        try:
+            from app.models.credito import Credito
+            from app.models.servicio import Servicio
+            
+            # Consulta con JOIN para obtener información completa
+            creditos = db.query(Credito, Servicio).join(
+                Servicio, Credito.servicio_id == Servicio.id
+            ).filter(
+                Credito.usuario_id == current_user.id,
+                Credito.estado == "activo",
+                Credito.cantidad_disponible > 0
+            ).all()
+            
+            creditos_response = []
+            for credito, servicio in creditos:
+                creditos_response.append({
+                    "id": credito.id,
+                    "servicio_id": servicio.id,
+                    "servicio_nombre": servicio.nombre,
+                    "servicio_codigo": servicio.codigo,
+                    "cantidad_inicial": credito.cantidad_inicial,
+                    "cantidad_disponible": credito.cantidad_disponible,
+                    "cantidad_usada": credito.cantidad_inicial - credito.cantidad_disponible,
+                    "precio_unitario": float(credito.precio_unitario),
+                    "duracion": servicio.duracion_minutos,
+                    "fecha_compra": credito.created_at.isoformat() if credito.created_at else None,
+                    "fecha_vencimiento": credito.fecha_vencimiento.isoformat() if credito.fecha_vencimiento else None,
+                    "estado": credito.estado
+                })
+            
+            return creditos_response
+            
+        except ImportError:
+            # Si no existe tabla creditos, devolver array vacío
+            logger.warning("Tabla creditos no existe, devolviendo array vacío")
+            return []
+            
+    except Exception as e:
+        logger.error(f"Error obteniendo créditos del usuario {current_user.id}: {e}")
+        # En caso de error, devolver array vacío en lugar de error
+        return []
