@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Time, DateTime, Text, Enum, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Date, Time, Text, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.config.database import Base
@@ -9,32 +9,29 @@ class Cita(Base):
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     servicio_id = Column(Integer, ForeignKey("servicios.id"), nullable=False)
-    credito_id = Column(Integer, ForeignKey("creditos.id"), nullable=True)
+    credito_id = Column(Integer, nullable=True)  # Sin FK problemático
     fecha = Column(Date, nullable=False)
     hora = Column(Time, nullable=False)
-    modalidad = Column(Enum('presencial', 'virtual'), nullable=False)
+    modalidad = Column(Enum('presencial', 'virtual'), nullable=False, default='presencial')
     estado = Column(Enum('agendada', 'confirmada', 'completada', 'cancelada', 'no_asistio'), nullable=False, default='agendada')
     
-    # Comentarios y notas
+    # Comentarios
     comentarios_cliente = Column(Text, nullable=True)
     comentarios_admin = Column(Text, nullable=True)
-    # REMOVIDO: notas_psicologa - no existe en tu BD
     
-    # Campos específicos que SÍ existen
+    # Campos adicionales
     link_virtual = Column(String(500), nullable=True)
     motivo_cancelacion = Column(Text, nullable=True)
-    cancelada_por = Column(Enum('cliente', 'administrador'), nullable=True)
+    cancelada_por = Column(String(50), nullable=True)
     fecha_completada = Column(DateTime, nullable=True)
-    
-    # Sistema de recordatorios
-    recordatorio_enviado = Column(Boolean, nullable=False, default=False)
+    recordatorio_enviado = Column(String(10), nullable=True, default='no')
     fecha_recordatorio = Column(DateTime, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    # Relaciones
+    # SOLO relaciones que funcionan
     usuario = relationship("Usuario", back_populates="citas")
     servicio = relationship("Servicio", back_populates="citas")
     
@@ -57,8 +54,5 @@ class Cita(Base):
             'recordatorio_enviado': self.recordatorio_enviado,
             'fecha_recordatorio': self.fecha_recordatorio.isoformat() if self.fecha_recordatorio else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            # Información de relaciones
-            'usuario_nombre': getattr(self.usuario, 'nombre', None) if hasattr(self, 'usuario') and self.usuario else None,
-            'servicio_nombre': getattr(self.servicio, 'nombre', None) if hasattr(self, 'servicio') and self.servicio else None
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

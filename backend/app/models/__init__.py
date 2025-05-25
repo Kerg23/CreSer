@@ -1,16 +1,15 @@
-# CRÍTICO: Importar Base primero
 from app.config.database import Base
 
-# Importar modelos en orden correcto (sin dependencias circulares)
+# SOLO modelos que funcionan sin problemas
 from .usuario import Usuario
 from .servicio import Servicio
 from .cita import Cita
 
-# OPCIONAL: Solo importar Credito si lo necesitas para el MVP
-try:
-    from .credito import Credito
-    __all__ = ["Base", "Usuario", "Servicio", "Cita", "Credito"]
-except ImportError:
-    __all__ = ["Base", "Usuario", "Servicio", "Cita"]
+# NO importar modelos problemáticos
+# from .credito import Credito
+# from .pago import Pago
+# from .contacto import Contacto
 
-# NO importar Pago para MVP para evitar complicaciones
+__all__ = ["Base", "Usuario", "Servicio", "Cita"]
+
+print(f"✅ Modelos MVP seguros cargados: {__all__}")

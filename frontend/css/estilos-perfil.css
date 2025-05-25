@@ -1191,3 +1191,172 @@ main {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============ FILTRO DE CALENDARIO ============ */
+.filtro-calendario-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #dee2e6;
+    flex-wrap: wrap;
+}
+
+.filtro-calendario-container label {
+    font-weight: 600;
+    color: var(--color-secondary);
+    font-size: 14px;
+    white-space: nowrap;
+    margin-right: 5px;
+}
+
+.filtro-calendario {
+    padding: 8px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+    transition: all 0.3s ease;
+    min-width: 140px;
+}
+
+.filtro-calendario:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(78, 195, 177, 0.1);
+}
+
+.btn-filtrar {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-limpiar {
+    background: var(--color-text-light);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-filtrar:hover {
+    background: var(--color-secondary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.btn-limpiar:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Ajustar header-actions para acomodar el nuevo filtro */
+.section-header .header-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 15px;
+}
+
+/* Responsive para filtro de calendario */
+@media (max-width: 768px) {
+    .filtro-calendario-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .filtro-calendario-container label {
+        text-align: center;
+        margin-right: 0;
+    }
+    
+    .filtro-calendario {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .btn-filtrar,
+    .btn-limpiar {
+        width: 100%;
+    }
+    
+    #filtro-fecha {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .section-header .header-actions {
+        align-items: stretch;
+        width: 100%;
+    }
+    
+    .filtro-calendario-container {
+        padding: 10px;
+    }
+}
+
+/* Mejorar botón Nueva Cita para que se vea bien con el nuevo layout */
+.btn-nueva-cita-admin {
+    background: var(--color-success);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    align-self: flex-start;
+}
+
+.btn-nueva-cita-admin:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Asegurar que los botones de actualizar se vean consistentes */
+.btn-actualizar {
+    background: var(--color-success) !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 15px !important;
+    border-radius: 5px !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-actualizar:hover {
+    background: #218838 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}

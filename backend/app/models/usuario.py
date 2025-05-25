@@ -18,13 +18,13 @@ class Usuario(Base):
     avatar = Column(String(255), nullable=True)
     tipo = Column(Enum('cliente', 'administrador'), nullable=False, default='cliente')
     estado = Column(Enum('activo', 'inactivo', 'suspendido'), nullable=False, default='activo')
-    configuracion = Column(Text, nullable=True, default='{"notificaciones_email": true, "notificaciones_sms": false, "recordatorios_citas": true}')
+    configuracion = Column(Text, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    # CORREGIDO: Solo relaciones que existen en tu BD
+    # SOLO relación que funciona
     citas = relationship("Cita", back_populates="usuario", lazy="select")
     
     def to_dict(self):

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum
 from sqlalchemy.sql.sqltypes import DECIMAL
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
@@ -14,14 +14,15 @@ class Servicio(Base):
     precio = Column(DECIMAL(10, 2), nullable=False)
     duracion_minutos = Column(Integer, nullable=False, default=60)
     categoria = Column(String(50), nullable=True, default="general")
-    estado = Column(String(20), nullable=False, default="activo")
+    estado = Column(Enum('activo', 'inactivo'), nullable=False, default='activo')
     
     # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
-    # CORREGIDO: Solo relación básica con citas para MVP
+    # CORREGIDO: Relaciones con back_populates
     citas = relationship("Cita", back_populates="servicio", lazy="select")
+    creditos = relationship("Credito", back_populates="servicio")
     
     def to_dict(self):
         """Convertir modelo a diccionario"""

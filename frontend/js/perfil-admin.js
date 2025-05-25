@@ -125,6 +125,15 @@ function configurarEventosAdmin() {
     setupFilter('filtro-fecha', cargarCitasPorPeriodo);
     setupFilter('periodo-reporte', cargarReportes);
     
+
+        // AGREGADO: Configurar filtro de fecha para citas
+    const filtroFecha = document.getElementById('filtro-fecha');
+    if (filtroFecha) {
+        filtroFecha.addEventListener('change', function() {
+            console.log('📅 Período seleccionado:', this.value);
+            cargarCitasPorPeriodo();
+        });
+    }
     // Event delegation para acciones dinámicas
     document.addEventListener('click', handleDynamicActions);
     
@@ -483,21 +492,20 @@ async function cargarCitasPorPeriodo() {
     
     try {
         LoadingManager.start(operation);
-        const periodo = document.getElementById('filtro-fecha')?.value || 'hoy';
         
-        console.log('🔄 Cargando citas por período:', periodo);
+        // CORREGIDO: Obtener período del select
+        const periodoSeleccionado = document.getElementById('filtro-fecha')?.value || 'hoy';
         
-        const cacheKey = `citas-${periodo}`;
+        console.log('🔄 Cargando citas por período:', periodoSeleccionado);
+        
+        // CORREGIDO: Usar endpoint correcto con parámetro período
+        let endpoint = `${CONFIG.ENDPOINTS.CITAS}?periodo=${periodoSeleccionado}`;
+        let cacheKey = `citas-${periodoSeleccionado}`;
+        
         const cached = CacheManager.get(cacheKey);
-        
         if (cached) {
             renderizarCitasPeriodo(cached);
             console.log('✅ Citas cargadas desde cache');
-        }
-        
-        let endpoint = CONFIG.ENDPOINTS.ADMIN_CITAS_HOY;
-        if (periodo !== 'hoy') {
-            endpoint = `${CONFIG.ENDPOINTS.CITAS}?periodo=${periodo}`;
         }
         
         const citas = await apiRequest(endpoint);
@@ -511,6 +519,7 @@ async function cargarCitasPorPeriodo() {
         LoadingManager.end(operation);
     }
 }
+
 
 function renderizarCitasPeriodo(citas) {
     const container = document.getElementById('citas-del-periodo');
@@ -1149,18 +1158,19 @@ async function completarCitaReal(citaId) {
     try {
         LoadingManager.start(operation);
         
-        await apiRequest(`${CONFIG.ENDPOINTS.CITAS}/${citaId}/completar`, {
-            method: 'PUT',
-            body: JSON.stringify({
-                estado: 'completada',
-                notas_psicologa: notas || 'Sesión completada',
-                fecha_completada: new Date().toISOString()
-            })
+        // CORREGIDO: Construir URL con parámetro opcional
+        let url = `${CONFIG.ENDPOINTS.CITAS}/${citaId}/completar`;
+        if (notas && notas.trim()) {
+            url += `?notas_sesion=${encodeURIComponent(notas.trim())}`;
+        }
+        
+        await apiRequest(url, {
+            method: 'PUT'
         });
         
-        mostrarMensaje('Cita marcada como completada', 'success');
+        mostrarMensaje('Cita completada exitosamente', 'success');
         
-        // Invalidar cache
+        // Invalidar cache relacionado
         CacheManager.invalidate('citas');
         CacheManager.invalidate('dashboard');
         
@@ -1176,6 +1186,7 @@ async function completarCitaReal(citaId) {
         LoadingManager.end(operation);
     }
 }
+
 
 async function verDetallesCitaReal(citaId) {
     try {
@@ -1907,5 +1918,261 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('beforeunload', function() {
     CacheManager.clear();
 });
+
+
+// ============ GESTIÓN DE NUEVA CITA DESDE ADMIN ============
+
+function nuevaCitaAdmin() {
+    console.log('🆕 Abriendo modal para nueva cita desde admin...');
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-nueva-cita-admin';
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+        justify-content: center; z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>Agendar Nueva Cita</h3>
+                <button onclick="this.closest('.modal-nueva-cita-admin').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            
+            <form id="form-nueva-cita-admin">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Cliente *</label>
+                        <select name="usuario_id" id="select-cliente-admin" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Cargando clientes...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Servicio *</label>
+                        <select name="servicio_id" id="select-servicio-admin" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Cargando servicios...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Fecha *</label>
+                        <input type="date" name="fecha" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" min="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Hora *</label>
+                        <select name="hora" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Seleccionar hora...</option>
+                            <option value="08:00">08:00 AM</option>
+                            <option value="09:00">09:00 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="14:00">02:00 PM</option>
+                            <option value="15:00">03:00 PM</option>
+                            <option value="16:00">04:00 PM</option>
+                            <option value="17:00">05:00 PM</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Modalidad *</label>
+                        <select name="modalidad" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="presencial">Presencial</option>
+                            <option value="virtual">Virtual</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Estado</label>
+                        <select name="estado" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="agendada">Agendada</option>
+                            <option value="confirmada">Confirmada</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Comentarios Administrativos</label>
+                    <textarea name="comentarios_admin" rows="3" placeholder="Comentarios sobre la cita..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                </div>
+                
+                <div class="form-actions" style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="this.closest('.modal-nueva-cita-admin').remove()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Cancelar</button>
+                    <button type="submit" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Agendar Cita</button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Cargar datos para los selects
+    cargarClientesParaCitaAdmin();
+    cargarServiciosParaCitaAdmin();
+    
+    // Configurar evento de submit
+    const form = modal.querySelector('#form-nueva-cita-admin');
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await crearNuevaCitaAdmin(e.target);
+    });
+}
+
+async function cargarClientesParaCitaAdmin() {
+    try {
+        const usuarios = await apiRequest(CONFIG.ENDPOINTS.ADMIN_USUARIOS_COMPLETO);
+        const select = document.getElementById('select-cliente-admin');
+        
+        if (select) {
+            select.innerHTML = '<option value="">Seleccionar cliente...</option>';
+            
+            usuarios.forEach(usuario => {
+                const option = document.createElement('option');
+                option.value = usuario.id;
+                option.textContent = `${usuario.nombre} (${usuario.email})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando clientes:', error);
+        mostrarMensaje('Error cargando lista de clientes', 'error');
+    }
+}
+
+async function cargarServiciosParaCitaAdmin() {
+    try {
+        console.log('🔄 Cargando servicios reales de la BD...');
+        
+        const servicios = await apiRequest('/servicios');
+        const select = document.getElementById('select-servicio-admin');
+        
+        console.log('✅ Servicios recibidos de la BD:', servicios);
+        console.log('📊 Cantidad de servicios:', servicios?.length || 0);
+        
+        if (!select) {
+            console.error('❌ No se encontró el select con id "select-servicio-admin"');
+            return;
+        }
+        
+        // Limpiar select
+        select.innerHTML = '<option value="">Seleccionar servicio...</option>';
+        
+        if (servicios && Array.isArray(servicios) && servicios.length > 0) {
+            servicios.forEach((servicio, index) => {
+                console.log(`📋 Procesando servicio ${index + 1}:`, {
+                    id: servicio.id,
+                    codigo: servicio.codigo,
+                    nombre: servicio.nombre,
+                    precio: servicio.precio
+                });
+                
+                const option = document.createElement('option');
+                option.value = servicio.id;
+                option.textContent = `${servicio.codigo} - ${servicio.nombre} - ${formatearPrecio(servicio.precio)}`;
+                select.appendChild(option);
+            });
+            
+            console.log(`✅ ${servicios.length} servicios cargados exitosamente en el select`);
+            
+            // Verificar que las opciones se agregaron
+            console.log('🔍 Opciones en el select:', select.children.length);
+        } else {
+            console.warn('⚠️ No se recibieron servicios o array vacío:', servicios);
+            select.innerHTML = '<option value="">No hay servicios disponibles</option>';
+        }
+        
+    } catch (error) {
+        console.error('❌ Error completo cargando servicios:', error);
+        console.error('❌ Stack trace:', error.stack);
+        
+        const select = document.getElementById('select-servicio-admin');
+        if (select) {
+            select.innerHTML = `<option value="">Error: ${error.message}</option>`;
+        }
+        
+        mostrarMensaje('Error cargando servicios: ' + error.message, 'error');
+    }
+}
+
+
+
+
+async function crearNuevaCitaAdmin(form) {
+    const operation = 'crear-cita-admin';
+    
+    try {
+        LoadingManager.start(operation);
+        
+        const formData = new FormData(form);
+        
+        const citaData = {
+            usuario_id: parseInt(formData.get('usuario_id')),
+            servicio_id: parseInt(formData.get('servicio_id')),
+            fecha: formData.get('fecha'),
+            hora: formData.get('hora'),
+            modalidad: formData.get('modalidad'),
+            estado: formData.get('estado'),
+            comentarios_admin: formData.get('comentarios_admin')
+        };
+        
+        // Validaciones
+        if (!citaData.usuario_id) {
+            mostrarMensaje('Por favor selecciona un cliente', 'error');
+            return;
+        }
+        
+        if (!citaData.servicio_id) {
+            mostrarMensaje('Por favor selecciona un servicio', 'error');
+            return;
+        }
+        
+        console.log('📤 Enviando datos de cita:', citaData);
+        
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.textContent = 'Agendando...';
+        
+        const response = await apiRequest(CONFIG.ENDPOINTS.AGENDAR_CITA, {
+            method: 'POST',
+            body: JSON.stringify(citaData)
+        });
+        
+        console.log('✅ Cita creada exitosamente:', response);
+        
+        mostrarMensaje('Cita agendada exitosamente', 'success');
+        form.closest('.modal-nueva-cita-admin').remove();
+        
+        // CORREGIDO: Invalidar cache y recargar datos
+        CacheManager.clear(); // Limpiar todo el cache
+        
+        // Recargar todas las secciones relevantes
+        await Promise.all([
+            cargarDashboard(),
+            cargarCitasPorPeriodo()
+        ]);
+        
+        console.log('✅ Datos recargados después de crear cita');
+        
+    } catch (error) {
+        console.error('❌ Error creando cita:', error);
+        
+        // Manejar el error específico de créditos
+        if (error.message.includes('créditos disponibles')) {
+            mostrarMensaje('El cliente no tiene créditos disponibles para este servicio', 'error');
+        } else {
+            mostrarMensaje('Error al agendar la cita: ' + error.message, 'error');
+        }
+        
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Agendar Cita';
+    } finally {
+        LoadingManager.end(operation);
+    }
+}
+
 
 console.log('✅ Panel de administración de CreSer optimizado cargado');

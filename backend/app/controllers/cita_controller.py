@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 import logging
 
 from app.config.database import get_db
@@ -47,7 +47,6 @@ async def obtener_mis_citas(
 ):
     """Obtener citas del usuario actual"""
     try:
-        # Query directo sin servicios problemáticos
         citas_query = db.query(Cita, Servicio).join(
             Servicio, Cita.servicio_id == Servicio.id
         ).filter(
@@ -86,13 +85,99 @@ async def obtener_mis_citas(
         logger.error(f"Error obteniendo mis citas: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
+# AGREGADO: Endpoint faltante para filtros
+@router.get("/")
+async def listar_citas_con_filtros(
+    periodo: Optional[str] = Query(None, description="Filtrar por período (hoy, semana, mes)"),
+    fecha: Optional[str] = Query(None, description="Filtrar por fecha (YYYY-MM-DD)"),
+    estado: Optional[str] = Query(None, description="Filtrar por estado"),
+    usuario_id: Optional[int] = Query(None, description="Filtrar por usuario"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Listar citas con filtros para admin"""
+    try:
+        logger.info(f"Listando citas con filtros - período: {periodo}, fecha: {fecha}")
+        
+        query = db.query(Cita, Usuario, Servicio).join(
+            Usuario, Cita.usuario_id == Usuario.id
+        ).join(
+            Servicio, Cita.servicio_id == Servicio.id
+        )
+        
+        # Aplicar filtros por período
+        if periodo:
+            hoy = datetime.now().date()
+            
+            if periodo == "hoy":
+                query = query.filter(Cita.fecha == hoy)
+            elif periodo == "semana":
+                inicio_semana = hoy - timedelta(days=hoy.weekday())
+                fin_semana = inicio_semana + timedelta(days=6)
+                query = query.filter(Cita.fecha.between(inicio_semana, fin_semana))
+            elif periodo == "mes":
+                inicio_mes = hoy.replace(day=1)
+                if hoy.month == 12:
+                    fin_mes = hoy.replace(year=hoy.year + 1, month=1, day=1) - timedelta(days=1)
+                else:
+                    fin_mes = hoy.replace(month=hoy.month + 1, day=1) - timedelta(days=1)
+                query = query.filter(Cita.fecha.between(inicio_mes, fin_mes))
+        
+        # Aplicar otros filtros
+        if fecha:
+            try:
+                fecha_obj = datetime.strptime(fecha, '%Y-%m-%d').date()
+                query = query.filter(Cita.fecha == fecha_obj)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Formato de fecha inválido. Use YYYY-MM-DD")
+        
+        if estado:
+            query = query.filter(Cita.estado == estado)
+            
+        if usuario_id:
+            query = query.filter(Cita.usuario_id == usuario_id)
+        
+        citas_raw = query.order_by(Cita.fecha.desc(), Cita.hora.desc()).offset(skip).limit(limit).all()
+        
+        citas_response = []
+        for cita, usuario, servicio in citas_raw:
+            cita_data = {
+                'id': cita.id,
+                'usuario_id': cita.usuario_id,
+                'servicio_id': cita.servicio_id,
+                'fecha': cita.fecha.isoformat() if cita.fecha else None,
+                'hora': cita.hora.strftime('%H:%M') if cita.hora else None,
+                'modalidad': cita.modalidad,
+                'estado': cita.estado,
+                'comentarios_cliente': cita.comentarios_cliente,
+                'comentarios_admin': cita.comentarios_admin,
+                'created_at': cita.created_at.isoformat() if cita.created_at else None,
+                'usuario_nombre': usuario.nombre,
+                'usuario_email': usuario.email,
+                'usuario_telefono': usuario.telefono,
+                'servicio_nombre': servicio.nombre,
+                'servicio_codigo': servicio.codigo
+            }
+            citas_response.append(cita_data)
+        
+        logger.info(f"Encontradas {len(citas_response)} citas con filtros aplicados")
+        return citas_response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listando citas con filtros: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
 @router.post("/agendar", status_code=status.HTTP_201_CREATED)
 async def agendar_cita(
     cita_data: dict,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    """Agendar nueva cita - AQUÍ ESTÁ EL ERROR QUE RECORDABAS"""
+    """Agendar nueva cita - CORREGIDO: Admin no necesita créditos"""
     try:
         logger.info(f"📥 Datos recibidos: {cita_data}")
         logger.info(f"👤 Usuario actual: {current_user.email} (tipo: {current_user.tipo})")
@@ -124,22 +209,30 @@ async def agendar_cita(
         if cita_existente:
             raise HTTPException(status_code=400, detail="El horario no está disponible")
         
-        # AQUÍ ESTÁ EL ERROR: Verificar créditos INCLUSO para administradores
-        credito = db.query(Credito).filter(
-            Credito.usuario_id == usuario_objetivo.id,
-            Credito.servicio_id == cita_data['servicio_id'],
-            Credito.estado == 'activo',
-            Credito.cantidad_disponible > 0
-        ).first()
-        
-        if not credito:
-            raise HTTPException(status_code=400, detail="No tienes créditos disponibles para este servicio")
+        # CORREGIDO: Solo verificar créditos para clientes, NO para administradores
+        credito_id = None
+        if current_user.tipo != "administrador":
+            # Solo clientes necesitan créditos
+            credito = db.query(Credito).filter(
+                Credito.usuario_id == usuario_objetivo.id,
+                Credito.servicio_id == cita_data['servicio_id'],
+                Credito.estado == 'activo',
+                Credito.cantidad_disponible > 0
+            ).first()
+            
+            if not credito:
+                raise HTTPException(status_code=400, detail="No tienes créditos disponibles para este servicio")
+            
+            credito_id = credito.id
+        else:
+            # Administradores pueden agendar sin créditos
+            logger.info(f"Administrador {current_user.email} agendando cita sin validar créditos")
         
         # Crear la cita
         nueva_cita = Cita(
             usuario_id=cita_data['usuario_id'],
             servicio_id=cita_data['servicio_id'],
-            credito_id=credito.id,
+            credito_id=credito_id,  # Puede ser None para admin
             fecha=datetime.strptime(cita_data['fecha'], '%Y-%m-%d').date(),
             hora=datetime.strptime(cita_data['hora'], '%H:%M').time(),
             modalidad=cita_data['modalidad'],
@@ -152,13 +245,14 @@ async def agendar_cita(
         
         db.add(nueva_cita)
         
-        # Usar crédito
-        credito.usar_credito()
+        # Usar crédito solo si existe (no para admin)
+        if credito_id and current_user.tipo != "administrador":
+            credito.usar_credito()
         
         db.commit()
         db.refresh(nueva_cita)
         
-        logger.info(f"✅ Cita {nueva_cita.id} creada exitosamente")
+        logger.info(f"✅ Cita {nueva_cita.id} creada exitosamente por {current_user.tipo}")
         
         return {
             'id': nueva_cita.id,
@@ -171,7 +265,8 @@ async def agendar_cita(
             'comentarios_admin': nueva_cita.comentarios_admin,
             'created_at': nueva_cita.created_at.isoformat(),
             'usuario_nombre': usuario_objetivo.nombre,
-            'servicio_nombre': servicio.nombre
+            'servicio_nombre': servicio.nombre,
+            'agendada_por': current_user.tipo
         }
         
     except HTTPException:
@@ -189,11 +284,10 @@ async def obtener_cita_por_id(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    """Obtener cita por ID - CORREGIDO SIN CAMPOS PROBLEMÁTICOS"""
+    """Obtener cita por ID"""
     try:
         logger.info(f"Obteniendo cita {cita_id} para usuario {current_user.email}")
         
-        # Query directo sin servicios problemáticos
         cita_query = db.query(Cita, Usuario, Servicio).join(
             Usuario, Cita.usuario_id == Usuario.id
         ).join(
@@ -211,7 +305,6 @@ async def obtener_cita_por_id(
         if current_user.tipo != "administrador" and cita.usuario_id != current_user.id:
             raise HTTPException(status_code=403, detail="No tienes permisos para ver esta cita")
         
-        # CORREGIDO: Crear respuesta manual sin campos problemáticos
         cita_data = {
             'id': cita.id,
             'usuario_id': cita.usuario_id,
@@ -231,15 +324,13 @@ async def obtener_cita_por_id(
             'fecha_recordatorio': cita.fecha_recordatorio.isoformat() if cita.fecha_recordatorio else None,
             'created_at': cita.created_at.isoformat() if cita.created_at else None,
             'updated_at': cita.updated_at.isoformat() if cita.updated_at else None,
-            # Información de relaciones
             'usuario_nombre': usuario.nombre,
             'usuario_email': usuario.email,
             'usuario_telefono': usuario.telefono,
             'servicio_nombre': servicio.nombre,
             'servicio_codigo': servicio.codigo,
             'duracion_minutos': servicio.duracion_minutos,
-            # CORREGIDO: Campo que no existe en BD
-            'notas_psicologa': None  # Siempre null porque no existe en tu BD
+            'notas_psicologa': None  # Campo que no existe en BD
         }
         
         logger.info(f"Cita {cita_id} obtenida exitosamente")
@@ -292,7 +383,7 @@ async def confirmar_cita(
 @router.put("/{cita_id}/completar")
 async def completar_cita(
     cita_id: int,
-    notas_sesion: str = Query(..., description="Notas de la sesión"),
+    notas_sesion: Optional[str] = Query(None, description="Notas de la sesión (opcional)"),  # CORREGIDO: Opcional
     db: Session = Depends(get_db),
     current_admin: Usuario = Depends(require_admin)
 ):
@@ -308,8 +399,13 @@ async def completar_cita(
         
         cita.estado = 'completada'
         cita.fecha_completada = datetime.now(timezone.utc)
-        # CORREGIDO: No usar notas_psicologa porque no existe
-        cita.comentarios_admin = f"Completada: {notas_sesion}"
+        
+        # CORREGIDO: Usar comentarios_admin en lugar de notas_psicologa
+        if notas_sesion:
+            cita.comentarios_admin = f"Completada: {notas_sesion}"
+        else:
+            cita.comentarios_admin = "Cita completada desde panel administrativo"
+            
         cita.updated_at = datetime.now(timezone.utc)
         
         db.commit()

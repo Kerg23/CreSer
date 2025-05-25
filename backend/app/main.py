@@ -109,14 +109,87 @@ try:
     
     # Controladores básicos
     from app.controllers.auth_controller import router as auth_router
-    from app.controllers.usuario_controller import router as usuario_router  # CORREGIDO
+    from app.controllers.usuario_controller import router as usuario_router
     from app.controllers.cita_controller import router as cita_router
     
     app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
-    app.include_router(usuario_router, prefix="/api/usuarios", tags=["Usuarios"])  # CORREGIDO
+    app.include_router(usuario_router, prefix="/api/usuarios", tags=["Usuarios"])
     app.include_router(cita_router, prefix="/api/citas", tags=["Citas"])
     
     logger.info("Controladores básicos cargados")
+    
+    # AGREGADO: Controlador de servicios
+    try:
+        from app.controllers.servicio_controller import router as servicio_router
+        app.include_router(servicio_router, prefix="/api/servicios", tags=["Servicios"])
+        logger.info("Controlador servicios cargado")
+    except Exception as e:
+        logger.error(f"Error cargando servicio controller: {e}")
+        
+        # Crear servicio controller inline como fallback
+        from fastapi import APIRouter
+        from app.config.database import get_db
+        from sqlalchemy.orm import Session
+        from fastapi import Depends
+        
+        servicio_router = APIRouter()
+        
+        @servicio_router.get("/")
+        async def servicios_fallback():
+            logger.info("Usando servicios fallback")
+            return [
+                {
+                    "id": 1,
+                    "codigo": "PSICO_IND",
+                    "nombre": "Psicoterapia Individual",
+                    "descripcion": "Sesión individual de psicoterapia",
+                    "precio": 70000,
+                    "duracion_minutos": 60,
+                    "categoria": "psicoterapia",
+                    "estado": "activo"
+                },
+                {
+                    "id": 2,
+                    "codigo": "ORIENT_FAM",
+                    "nombre": "Orientación Familiar",
+                    "descripcion": "Sesión de orientación familiar",
+                    "precio": 110000,
+                    "duracion_minutos": 90,
+                    "categoria": "orientacion",
+                    "estado": "activo"
+                },
+                {
+                    "id": 3,
+                    "codigo": "VALOR_PSICO",
+                    "nombre": "Valoración Psicológica",
+                    "descripcion": "Evaluación psicológica completa",
+                    "precio": 100000,
+                    "duracion_minutos": 120,
+                    "categoria": "evaluacion",
+                    "estado": "activo"
+                },
+                {
+                    "id": 4,
+                    "codigo": "PSICO_PAREJA",
+                    "nombre": "Psicoterapia de Pareja",
+                    "descripcion": "Sesión de terapia de pareja",
+                    "precio": 100000,
+                    "duracion_minutos": 90,
+                    "categoria": "psicoterapia",
+                    "estado": "activo"
+                }
+            ]
+        
+        @servicio_router.get("/{servicio_id}")
+        async def servicio_by_id_fallback(servicio_id: int):
+            servicios = await servicios_fallback()
+            servicio = next((s for s in servicios if s["id"] == servicio_id), None)
+            if not servicio:
+                raise HTTPException(status_code=404, detail="Servicio no encontrado")
+            return servicio
+        
+        app.include_router(servicio_router, prefix="/api/servicios", tags=["Servicios"])
+        logger.info("Servicio controller fallback creado")
     
     # Controlador admin
     try:

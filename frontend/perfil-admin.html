@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="css/estilos-navbar.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- NUEVO: Chart.js para reportes -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
 </head>
@@ -43,7 +42,6 @@
                 <div class="admin-info" style="margin-top: 10px;">
                     <span id="admin-nombre" style="font-weight: bold;">Cargando...</span>
                     <span class="admin-badge" style="background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px;">Administrador</span>
-                    <!-- NUEVO: Indicador de última actualización -->
                     <span id="ultima-actualizacion" style="margin-left: 20px; font-size: 12px; color: #666;"></span>
                 </div>
             </div>
@@ -55,7 +53,8 @@
                     <!-- Sidebar de navegación admin -->
                     <div class="perfil-sidebar admin">
                         <div class="perfil-avatar">
-                            <img src="recursos/avatar-admin.png" alt="Avatar Admin" id="avatar-admin" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMDA3YmZmIi8+Cjx0ZXh0IHg9IjUwIiB5PSI2NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+'">
+                            <img src="recursos/avatar-admin.png" alt="Avatar Admin" id="avatar-admin"
+                                onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMDA3YmZmIi8+Cjx0ZXh0IHg9IjUwIiB5PSI2NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+'">
                             <button class="btn-cambiar-avatar" onclick="cambiarAvatar()">Cambiar Foto</button>
                         </div>
                         <div class="perfil-info-basica">
@@ -85,7 +84,8 @@
                         </nav>
                         
                         <div class="sidebar-logout" style="margin-top: 20px; padding: 10px;">
-                            <button onclick="cerrarSesion()" class="btn-logout-sidebar" style="width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                            <button onclick="cerrarSesion()" class="btn-logout-sidebar"
+                                style="width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
                                 <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                             </button>
                         </div>
@@ -97,13 +97,15 @@
                         <div id="dashboard" class="content-section active">
                             <div class="section-header">
                                 <h2>Dashboard</h2>
-                                <div class="fecha-actual">Hoy: <span id="fecha-hoy"></span></div>
-                                <button onclick="cargarDashboard()" class="btn-actualizar" style="margin-left: 20px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                                    <i class="fas fa-sync-alt"></i> Actualizar
-                                </button>
+                                <div class="header-actions">
+                                    <div class="fecha-actual">Hoy: <span id="fecha-hoy"></span></div>
+                                    <button onclick="cargarDashboard()" class="btn-actualizar"
+                                        style="margin-left: 20px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                        <i class="fas fa-sync-alt"></i> Actualizar
+                                    </button>
+                                </div>
                             </div>
-                            
-                            <!-- ACTUALIZADO: Stats grid con datos reales -->
+
                             <div class="stats-grid" id="stats-grid">
                                 <div class="stat-card" data-stat="clientes">
                                     <div class="stat-icon">👥</div>
@@ -160,9 +162,11 @@
                             <div class="section-header">
                                 <h2>Gestionar Clientes</h2>
                                 <div class="header-actions">
-                                    <input type="text" placeholder="Buscar cliente..." class="search-input" id="buscar-cliente">
+                                    <input type="text" placeholder="Buscar cliente..." class="search-input"
+                                        id="buscar-cliente">
                                     <button class="btn-nuevo-cliente" onclick="nuevoCliente()">Nuevo Cliente</button>
-                                    <button class="btn-actualizar" onclick="cargarClientes()" style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    <button class="btn-actualizar" onclick="cargarClientes()"
+                                        style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
                                         <i class="fas fa-sync-alt"></i>
                                     </button>
                                 </div>
@@ -194,19 +198,29 @@
                             <div class="section-header">
                                 <h2>Gestionar Citas</h2>
                                 <div class="header-actions">
-                                    <select id="filtro-fecha">
-                                        <option value="hoy">Hoy</option>
-                                        <option value="semana">Esta Semana</option>
-                                        <option value="mes">Este Mes</option>
-                                    </select>
+                                    <!-- NUEVO: Filtro de calendario -->
+                                    <div class="filtro-calendario-container">
+                                        <label for="calendario-filtro">Filtrar por fecha:</label>
+                                        <input type="date" id="calendario-filtro" class="filtro-calendario">
+                                        <button onclick="cargarCitasPorPeriodo()" class="btn-filtrar">Filtrar</button>
+                                        <button onclick="limpiarFiltroFecha()" class="btn-limpiar">Todas</button>
+                                        
+                                        <!-- Filtro viejo como backup -->
+                                        <select id="filtro-fecha" style="margin-left: 15px;">
+                                            <option value="hoy">Hoy</option>
+                                            <option value="semana">Esta Semana</option>
+                                            <option value="mes">Este Mes</option>
+                                        </select>
+                                    </div>
+                                    
                                     <button class="btn-nueva-cita-admin" onclick="nuevaCitaAdmin()">Nueva Cita</button>
-                                    <button class="btn-actualizar" onclick="cargarCitasAdmin()" style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    <button class="btn-actualizar" onclick="cargarCitasPorPeriodo()"
+                                        style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
                                         <i class="fas fa-sync-alt"></i>
                                     </button>
                                 </div>
                             </div>
-                            
-                            <!-- NUEVO: Resumen de citas -->
+
                             <div class="citas-resumen" id="citas-resumen">
                                 <div class="resumen-card">
                                     <h4>Total Citas</h4>
@@ -256,13 +270,13 @@
                                         <option value="aprobado">Aprobados</option>
                                         <option value="rechazado">Rechazados</option>
                                     </select>
-                                    <button class="btn-actualizar" onclick="cargarPagosAdmin()" style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    <button class="btn-actualizar" onclick="cargarPagosAdmin()"
+                                        style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
                                         <i class="fas fa-sync-alt"></i>
                                     </button>
                                 </div>
                             </div>
                             
-                            <!-- NUEVO: Resumen de pagos -->
                             <div class="pagos-resumen" id="pagos-resumen">
                                 <div class="resumen-card">
                                     <h4>Total Pagos</h4>
@@ -305,7 +319,7 @@
                             </div>
                         </div>
 
-                        <!-- ACTUALIZADO: Reportes con gráficos reales -->
+                        <!-- Reportes -->
                         <div id="reportes" class="content-section">
                             <div class="section-header">
                                 <h2>Reportes y Análisis</h2>
@@ -325,7 +339,6 @@
                                 </div>
                             </div>
                             
-                            <!-- NUEVO: Métricas de reportes -->
                             <div class="reportes-metricas" id="reportes-metricas">
                                 <div class="metrica-card">
                                     <h4>Ingresos Totales</h4>
@@ -356,39 +369,10 @@
                                         <canvas id="chartIngresosMes" width="400" height="200"></canvas>
                                     </div>
                                 </div>
-                                
                                 <div class="reporte-card">
                                     <h3>Servicios Más Solicitados</h3>
                                     <div class="chart-container">
                                         <canvas id="chartServiciosPopulares" width="400" height="200"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="reporte-card">
-                                    <h3>Citas por Estado</h3>
-                                    <div class="chart-container">
-                                        <canvas id="chartEstadoCitas" width="400" height="200"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="reporte-card">
-                                    <h3>Crecimiento de Clientes</h3>
-                                    <div class="chart-container">
-                                        <canvas id="chartCrecimientoClientes" width="400" height="200"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="reporte-card">
-                                    <h3>Modalidad de Citas</h3>
-                                    <div class="chart-container">
-                                        <canvas id="chartModalidadCitas" width="400" height="200"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="reporte-card">
-                                    <h3>Horarios Más Solicitados</h3>
-                                    <div class="chart-container">
-                                        <canvas id="chartHorariosCitas" width="400" height="200"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -405,58 +389,35 @@
                                     <form id="form-horarios" onsubmit="guardarHorarios(event)">
                                         <div class="horario-dia">
                                             <label>Lunes:</label>
-                                            <input type="time" name="lunes_inicio" value="08:00"> - 
+                                            <input type="time" name="lunes_inicio" value="08:00"> -
                                             <input type="time" name="lunes_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Martes:</label>
-                                            <input type="time" name="martes_inicio" value="08:00"> - 
+                                            <input type="time" name="martes_inicio" value="08:00"> -
                                             <input type="time" name="martes_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Miércoles:</label>
-                                            <input type="time" name="miercoles_inicio" value="08:00"> - 
+                                            <input type="time" name="miercoles_inicio" value="08:00"> -
                                             <input type="time" name="miercoles_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Jueves:</label>
-                                            <input type="time" name="jueves_inicio" value="08:00"> - 
+                                            <input type="time" name="jueves_inicio" value="08:00"> -
                                             <input type="time" name="jueves_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Viernes:</label>
-                                            <input type="time" name="viernes_inicio" value="08:00"> - 
+                                            <input type="time" name="viernes_inicio" value="08:00"> -
                                             <input type="time" name="viernes_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Sábado:</label>
-                                            <input type="time" name="sabado_inicio" value="08:00"> - 
+                                            <input type="time" name="sabado_inicio" value="08:00"> -
                                             <input type="time" name="sabado_fin" value="12:00">
                                         </div>
                                         <button type="submit">Guardar Horarios</button>
-                                    </form>
-                                </div>
-                                
-                                <div class="config-admin-card">
-                                    <h3>Precios de Servicios</h3>
-                                    <form id="form-precios" onsubmit="actualizarPrecios(event)">
-                                        <div class="precio-servicio">
-                                            <label>Psicoterapia Individual:</label>
-                                            <input type="number" name="psicoterapia_individual" value="70000" min="0">
-                                        </div>
-                                        <div class="precio-servicio">
-                                            <label>Orientación Familiar:</label>
-                                            <input type="number" name="orientacion_familiar" value="110000" min="0">
-                                        </div>
-                                        <div class="precio-servicio">
-                                            <label>Valoración Psicológica:</label>
-                                            <input type="number" name="valoracion_psicologica" value="100000" min="0">
-                                        </div>
-                                        <div class="precio-servicio">
-                                            <label>Psicoterapia de Pareja:</label>
-                                            <input type="number" name="psicoterapia_pareja" value="100000" min="0">
-                                        </div>
-                                        <button type="submit">Actualizar Precios</button>
                                     </form>
                                 </div>
                                 
@@ -503,8 +464,6 @@
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/perfil-admin.js"></script>
-    
-    
 </body>
 
 </html>

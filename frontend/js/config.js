@@ -24,6 +24,9 @@ const CONFIG = {
         HORARIOS_DISPONIBLES: '/citas/horarios-disponibles',
         SERVICIOS_DISPONIBLES: '/citas/servicios-disponibles',
 
+        // AGREGADO: Servicios básicos
+        SERVICIOS: '/servicios',
+
         // Pagos
         PAGOS: '/pagos',
         PROCESAR_PAGO: '/pagos/procesar',
@@ -45,8 +48,7 @@ const CONFIG = {
         // Contacto
         CONTACTO: '/contacto'
 
-
-        
+        // AGREGADO: Servicios básicos
 
     },
 
