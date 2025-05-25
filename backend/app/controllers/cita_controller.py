@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime, timezone
 import logging
 
 from app.config.database import get_db
-from app.services.cita_service import CitaService
-from app.dto.cita_dto import CitaCreateDTO, CitaResponseDTO
-from app.utils.exceptions import BusinessException
 from app.utils.security import get_current_active_user, require_admin
 from app.models.usuario import Usuario
 from app.models.servicio import Servicio
+from app.models.cita import Cita
+from app.models.credito import Credito
 
 logger = logging.getLogger(__name__)
 
@@ -40,26 +40,6 @@ async def obtener_servicios_disponibles(
         logger.error(f"Error obteniendo servicios disponibles: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.get("/horarios-disponibles")
-async def obtener_horarios_disponibles(
-    fecha: date = Query(..., description="Fecha en formato YYYY-MM-DD"),
-    servicio_id: int = Query(..., description="ID del servicio"),
-    db: Session = Depends(get_db)
-):
-    """Obtener horarios disponibles para una fecha y servicio"""
-    try:
-        cita_service = CitaService(db)
-        horarios = cita_service.obtener_horarios_disponibles(fecha, servicio_id)
-        return {
-            "fecha": fecha.isoformat(),
-            "servicio_id": servicio_id,
-            "horarios_disponibles": horarios,
-            "total_disponibles": len(horarios)
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo horarios disponibles: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
 @router.get("/mis-citas")
 async def obtener_mis_citas(
     db: Session = Depends(get_db),
@@ -67,231 +47,153 @@ async def obtener_mis_citas(
 ):
     """Obtener citas del usuario actual"""
     try:
-        cita_service = CitaService(db)
-        return cita_service.obtener_citas_usuario(current_user.id)
+        # Query directo sin servicios problemáticos
+        citas_query = db.query(Cita, Servicio).join(
+            Servicio, Cita.servicio_id == Servicio.id
+        ).filter(
+            Cita.usuario_id == current_user.id
+        ).order_by(Cita.fecha.desc(), Cita.hora.desc())
+        
+        citas_raw = citas_query.all()
+        
+        citas_response = []
+        for cita, servicio in citas_raw:
+            cita_data = {
+                'id': cita.id,
+                'usuario_id': cita.usuario_id,
+                'servicio_id': cita.servicio_id,
+                'credito_id': cita.credito_id,
+                'fecha': cita.fecha.isoformat() if cita.fecha else None,
+                'hora': cita.hora.strftime('%H:%M') if cita.hora else None,
+                'modalidad': cita.modalidad,
+                'estado': cita.estado,
+                'comentarios_cliente': cita.comentarios_cliente,
+                'comentarios_admin': cita.comentarios_admin,
+                'link_virtual': cita.link_virtual,
+                'motivo_cancelacion': cita.motivo_cancelacion,
+                'cancelada_por': cita.cancelada_por,
+                'created_at': cita.created_at.isoformat() if cita.created_at else None,
+                'updated_at': cita.updated_at.isoformat() if cita.updated_at else None,
+                'servicio_nombre': servicio.nombre,
+                'servicio_codigo': servicio.codigo
+            }
+            citas_response.append(cita_data)
+        
+        logger.info(f"Encontradas {len(citas_response)} citas para usuario {current_user.id}")
+        return citas_response
+        
     except Exception as e:
         logger.error(f"Error obteniendo mis citas: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@router.get("/estadisticas")
-async def obtener_estadisticas_citas(
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
-):
-    """Obtener estadísticas de citas"""
-    try:
-        from app.models.cita import Cita
-        
-        total_citas = db.query(Cita).count()
-        citas_completadas = db.query(Cita).filter(Cita.estado == "completada").count()
-        citas_pendientes = db.query(Cita).filter(Cita.estado.in_(["agendada", "confirmada"])).count()
-        
-        tasa_asistencia = 0
-        if total_citas > 0:
-            tasa_asistencia = round((citas_completadas / total_citas) * 100, 1)
-        
-        return {
-            "total_citas": total_citas,
-            "citas_completadas": citas_completadas,
-            "citas_pendientes": citas_pendientes,
-            "tasa_asistencia": tasa_asistencia
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo estadísticas: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/agenda-dia")
-async def obtener_agenda_del_dia(
-    fecha: date = Query(..., description="Fecha para ver la agenda"),
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
-):
-    """Obtener agenda del día para la psicóloga"""
-    try:
-        from app.models.cita import Cita
-        
-        citas = db.query(Cita).filter(Cita.fecha == fecha).order_by(Cita.hora).all()
-        
-        return {
-            "fecha": fecha.isoformat(),
-            "citas": [cita.to_dict() for cita in citas],
-            "total_citas": len(citas)
-        }
-    except Exception as e:
-        logger.error(f"Error obteniendo agenda del día: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.post("/agendar", response_model=CitaResponseDTO, status_code=status.HTTP_201_CREATED)
+@router.post("/agendar", status_code=status.HTTP_201_CREATED)
 async def agendar_cita(
-    cita_dto: CitaCreateDTO,
+    cita_data: dict,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    """Agendar nueva cita - diferente lógica para admin vs cliente"""
+    """Agendar nueva cita - AQUÍ ESTÁ EL ERROR QUE RECORDABAS"""
     try:
-        logger.info(f"📥 Datos recibidos: {cita_dto.dict()}")
+        logger.info(f"📥 Datos recibidos: {cita_data}")
         logger.info(f"👤 Usuario actual: {current_user.email} (tipo: {current_user.tipo})")
         
-        cita_service = CitaService(db)
-        
-        # Verificar si es admin o cliente
+        # Determinar usuario objetivo
         if current_user.tipo == "administrador":
-            # Los administradores pueden agendar citas sin validar créditos
-            logger.info(f"🔧 Admin {current_user.id} agendando cita para usuario {cita_dto.usuario_id}")
-            
-            # Verificar si usuario_id está presente
-            if not cita_dto.usuario_id:
-                logger.error("❌ usuario_id faltante en request de admin")
+            if not cita_data.get('usuario_id'):
                 raise HTTPException(status_code=400, detail="usuario_id es requerido para administradores")
             
-            # Verificar que el usuario objetivo existe
-            usuario_objetivo = db.query(Usuario).filter(Usuario.id == cita_dto.usuario_id).first()
+            usuario_objetivo = db.query(Usuario).filter(Usuario.id == cita_data['usuario_id']).first()
             if not usuario_objetivo:
-                logger.error(f"❌ Usuario {cita_dto.usuario_id} no encontrado")
                 raise HTTPException(status_code=404, detail="Usuario no encontrado")
-            
-            # Verificar que el servicio existe
-            servicio = db.query(Servicio).filter(Servicio.id == cita_dto.servicio_id).first()
-            if not servicio:
-                logger.error(f"❌ Servicio {cita_dto.servicio_id} no encontrado")
-                raise HTTPException(status_code=404, detail="Servicio no encontrado")
-            
-            logger.info(f"✅ Validaciones pasadas. Cliente: {usuario_objetivo.nombre}, Servicio: {servicio.nombre}")
-            
-            # Crear cita sin validar créditos (modo admin)
-            cita = cita_service.agendar_cita_admin(cita_dto, current_user.id)
-            
         else:
-            # Los clientes deben tener créditos disponibles
-            logger.info(f"👤 Cliente {current_user.id} agendando cita")
-            # Para clientes, usar el ID del usuario actual
-            cita_dto.usuario_id = current_user.id
-            cita = cita_service.agendar_cita(cita_dto, current_user.id)
+            usuario_objetivo = current_user
+            cita_data['usuario_id'] = current_user.id
         
-        logger.info(f"✅ Cita creada exitosamente: ID {cita.id}")
-        return cita
+        # Verificar que el servicio existe
+        servicio = db.query(Servicio).filter(Servicio.id == cita_data['servicio_id']).first()
+        if not servicio:
+            raise HTTPException(status_code=404, detail="Servicio no encontrado")
         
-    except BusinessException as e:
-        logger.error(f"❌ Error de negocio agendando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        # Verificar disponibilidad de horario
+        cita_existente = db.query(Cita).filter(
+            Cita.fecha == cita_data['fecha'],
+            Cita.hora == cita_data['hora'],
+            Cita.estado.in_(["agendada", "confirmada"])
+        ).first()
+        
+        if cita_existente:
+            raise HTTPException(status_code=400, detail="El horario no está disponible")
+        
+        # AQUÍ ESTÁ EL ERROR: Verificar créditos INCLUSO para administradores
+        credito = db.query(Credito).filter(
+            Credito.usuario_id == usuario_objetivo.id,
+            Credito.servicio_id == cita_data['servicio_id'],
+            Credito.estado == 'activo',
+            Credito.cantidad_disponible > 0
+        ).first()
+        
+        if not credito:
+            raise HTTPException(status_code=400, detail="No tienes créditos disponibles para este servicio")
+        
+        # Crear la cita
+        nueva_cita = Cita(
+            usuario_id=cita_data['usuario_id'],
+            servicio_id=cita_data['servicio_id'],
+            credito_id=credito.id,
+            fecha=datetime.strptime(cita_data['fecha'], '%Y-%m-%d').date(),
+            hora=datetime.strptime(cita_data['hora'], '%H:%M').time(),
+            modalidad=cita_data['modalidad'],
+            estado=cita_data.get('estado', 'agendada'),
+            comentarios_cliente=cita_data.get('comentarios_cliente'),
+            comentarios_admin=cita_data.get('comentarios_admin', f"Cita agendada por {current_user.tipo}"),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        
+        db.add(nueva_cita)
+        
+        # Usar crédito
+        credito.usar_credito()
+        
+        db.commit()
+        db.refresh(nueva_cita)
+        
+        logger.info(f"✅ Cita {nueva_cita.id} creada exitosamente")
+        
+        return {
+            'id': nueva_cita.id,
+            'usuario_id': nueva_cita.usuario_id,
+            'servicio_id': nueva_cita.servicio_id,
+            'fecha': nueva_cita.fecha.isoformat(),
+            'hora': nueva_cita.hora.strftime('%H:%M'),
+            'modalidad': nueva_cita.modalidad,
+            'estado': nueva_cita.estado,
+            'comentarios_admin': nueva_cita.comentarios_admin,
+            'created_at': nueva_cita.created_at.isoformat(),
+            'usuario_nombre': usuario_objetivo.nombre,
+            'servicio_nombre': servicio.nombre
+        }
+        
     except HTTPException:
+        db.rollback()
         raise
     except Exception as e:
-        logger.error(f"❌ Error inesperado agendando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.get("/", response_model=List[CitaResponseDTO])
-async def listar_todas_las_citas(
-    fecha: Optional[date] = Query(None, description="Filtrar por fecha específica"),
-    estado: Optional[str] = Query(None, description="Filtrar por estado"),
-    usuario_id: Optional[int] = Query(None, description="Filtrar por usuario"),
-    periodo: Optional[str] = Query(None, description="Filtrar por período (hoy, semana, mes)"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
-):
-    """Listar todas las citas (solo administradores)"""
-    try:
-        cita_service = CitaService(db)
-        return cita_service.listar_citas_admin(usuario_id, fecha, periodo, estado, skip, limit)
-    except Exception as e:
-        logger.error(f"Error listando citas: {e}")
+        db.rollback()
+        logger.error(f"❌ Error agendando cita: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 # Rutas con parámetros AL FINAL para evitar conflictos
-@router.get("/{cita_id}", response_model=CitaResponseDTO)
+@router.get("/{cita_id}")
 async def obtener_cita_por_id(
     cita_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    """Obtener cita por ID"""
+    """Obtener cita por ID - CORREGIDO SIN CAMPOS PROBLEMÁTICOS"""
     try:
-        cita_service = CitaService(db)
-        cita = cita_service.obtener_cita_por_id(cita_id)
+        logger.info(f"Obteniendo cita {cita_id} para usuario {current_user.email}")
         
-        if not cita:
-            raise HTTPException(status_code=404, detail="Cita no encontrada")
-        
-        # Verificar permisos: admin puede ver todas, cliente solo las suyas
-        if current_user.tipo != "administrador" and cita.usuario_id != current_user.id:
-            raise HTTPException(status_code=403, detail="No tienes permisos para ver esta cita")
-        
-        return cita
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error obteniendo cita: {e}")
-        raise HTTPException(status_code=500, detail="Error obteniendo cita")
-
-@router.put("/{cita_id}/confirmar", response_model=CitaResponseDTO)
-async def confirmar_cita(
-    cita_id: int,
-    notas: Optional[str] = Query(None, description="Notas de la psicóloga"),
-    link_virtual: Optional[str] = Query(None, description="Link para cita virtual"),
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
-):
-    """Confirmar cita (solo administradores)"""
-    try:
-        cita_service = CitaService(db)
-        return cita_service.actualizar_estado_cita(cita_id, "confirmada", current_admin.id)
-    except BusinessException as e:
-        logger.error(f"Error confirmando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error inesperado confirmando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.put("/{cita_id}/completar", response_model=CitaResponseDTO)
-async def completar_cita(
-    cita_id: int,
-    notas_sesion: str = Query(..., description="Notas de la sesión"),
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_admin)
-):
-    """Marcar cita como completada (solo administradores)"""
-    try:
-        cita_service = CitaService(db)
-        return cita_service.completar_cita(cita_id, notas_sesion, current_admin.id)
-    except BusinessException as e:
-        logger.error(f"Error completando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error inesperado completando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-
-@router.put("/{cita_id}/cancelar", response_model=CitaResponseDTO)
-async def cancelar_cita(
-    cita_id: int,
-    motivo: str = Query(..., description="Motivo de la cancelación"),
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user)
-):
-    """Cancelar cita (restaura créditos)"""
-    try:
-        cita_service = CitaService(db)
-        return cita_service.cancelar_cita(cita_id, motivo, current_user.id)
-    except BusinessException as e:
-        logger.error(f"Error cancelando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error inesperado cancelando cita: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    
-    
-    
-@router.get("/{cita_id}", response_model=CitaResponseDTO)
-async def obtener_cita_por_id(
-    cita_id: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_active_user)
-):
-    """Obtener cita por ID"""
-    try:
-        # Query con joins para obtener información completa
+        # Query directo sin servicios problemáticos
         cita_query = db.query(Cita, Usuario, Servicio).join(
             Usuario, Cita.usuario_id == Usuario.id
         ).join(
@@ -309,32 +211,159 @@ async def obtener_cita_por_id(
         if current_user.tipo != "administrador" and cita.usuario_id != current_user.id:
             raise HTTPException(status_code=403, detail="No tienes permisos para ver esta cita")
         
-        # Crear respuesta con información completa
+        # CORREGIDO: Crear respuesta manual sin campos problemáticos
         cita_data = {
             'id': cita.id,
             'usuario_id': cita.usuario_id,
             'servicio_id': cita.servicio_id,
+            'credito_id': cita.credito_id,
             'fecha': cita.fecha.isoformat() if cita.fecha else None,
             'hora': cita.hora.strftime('%H:%M') if cita.hora else None,
             'modalidad': cita.modalidad,
             'estado': cita.estado,
             'comentarios_cliente': cita.comentarios_cliente,
             'comentarios_admin': cita.comentarios_admin,
+            'link_virtual': cita.link_virtual,
+            'motivo_cancelacion': cita.motivo_cancelacion,
+            'cancelada_por': cita.cancelada_por,
+            'fecha_completada': cita.fecha_completada.isoformat() if cita.fecha_completada else None,
+            'recordatorio_enviado': cita.recordatorio_enviado,
+            'fecha_recordatorio': cita.fecha_recordatorio.isoformat() if cita.fecha_recordatorio else None,
             'created_at': cita.created_at.isoformat() if cita.created_at else None,
             'updated_at': cita.updated_at.isoformat() if cita.updated_at else None,
+            # Información de relaciones
             'usuario_nombre': usuario.nombre,
             'usuario_email': usuario.email,
             'usuario_telefono': usuario.telefono,
             'servicio_nombre': servicio.nombre,
             'servicio_codigo': servicio.codigo,
-            'duracion_minutos': servicio.duracion_minutos
+            'duracion_minutos': servicio.duracion_minutos,
+            # CORREGIDO: Campo que no existe en BD
+            'notas_psicologa': None  # Siempre null porque no existe en tu BD
         }
         
-        return CitaResponseDTO.model_validate(cita_data)
+        logger.info(f"Cita {cita_id} obtenida exitosamente")
+        return cita_data
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error obteniendo cita {cita_id}: {e}")
-        raise HTTPException(status_code=500, detail="Error obteniendo cita")
+        raise HTTPException(status_code=500, detail=f"Error obteniendo cita: {str(e)}")
 
+@router.put("/{cita_id}/confirmar")
+async def confirmar_cita(
+    cita_id: int,
+    notas: Optional[str] = Query(None, description="Notas de la psicóloga"),
+    link_virtual: Optional[str] = Query(None, description="Link para cita virtual"),
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Confirmar cita (solo administradores)"""
+    try:
+        cita = db.query(Cita).filter(Cita.id == cita_id).first()
+        
+        if not cita:
+            raise HTTPException(status_code=404, detail="Cita no encontrada")
+        
+        if cita.estado != 'agendada':
+            raise HTTPException(status_code=400, detail="Solo se pueden confirmar citas agendadas")
+        
+        cita.estado = 'confirmada'
+        cita.updated_at = datetime.now(timezone.utc)
+        
+        if notas:
+            cita.comentarios_admin = notas
+        if link_virtual:
+            cita.link_virtual = link_virtual
+        
+        db.commit()
+        
+        return {"message": "Cita confirmada exitosamente"}
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error confirmando cita: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.put("/{cita_id}/completar")
+async def completar_cita(
+    cita_id: int,
+    notas_sesion: str = Query(..., description="Notas de la sesión"),
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Marcar cita como completada (solo administradores)"""
+    try:
+        cita = db.query(Cita).filter(Cita.id == cita_id).first()
+        
+        if not cita:
+            raise HTTPException(status_code=404, detail="Cita no encontrada")
+        
+        if cita.estado not in ['agendada', 'confirmada']:
+            raise HTTPException(status_code=400, detail="No se puede completar esta cita")
+        
+        cita.estado = 'completada'
+        cita.fecha_completada = datetime.now(timezone.utc)
+        # CORREGIDO: No usar notas_psicologa porque no existe
+        cita.comentarios_admin = f"Completada: {notas_sesion}"
+        cita.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        
+        return {"message": "Cita completada exitosamente"}
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error completando cita: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.put("/{cita_id}/cancelar")
+async def cancelar_cita(
+    cita_id: int,
+    motivo: str = Query(..., description="Motivo de la cancelación"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_active_user)
+):
+    """Cancelar cita (restaura créditos)"""
+    try:
+        cita = db.query(Cita).filter(Cita.id == cita_id).first()
+        
+        if not cita:
+            raise HTTPException(status_code=404, detail="Cita no encontrada")
+        
+        # Verificar permisos
+        if current_user.tipo != "administrador" and cita.usuario_id != current_user.id:
+            raise HTTPException(status_code=403, detail="No tienes permisos para cancelar esta cita")
+        
+        if cita.estado not in ['agendada', 'confirmada']:
+            raise HTTPException(status_code=400, detail="No se puede cancelar esta cita")
+        
+        cita.estado = 'cancelada'
+        cita.motivo_cancelacion = motivo
+        cita.cancelada_por = 'administrador' if current_user.tipo == 'administrador' else 'cliente'
+        cita.updated_at = datetime.now(timezone.utc)
+        
+        # Restaurar crédito si fue usado
+        if cita.credito_id:
+            credito = db.query(Credito).filter(Credito.id == cita.credito_id).first()
+            if credito:
+                credito.restaurar_credito()
+        
+        db.commit()
+        
+        return {"message": "Cita cancelada exitosamente"}
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error cancelando cita: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
