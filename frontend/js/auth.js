@@ -1,16 +1,15 @@
-// Gestión de autenticación
+// Sistema de autenticación optimizado para CreSer
 class AuthManager {
     constructor() {
         this.user = null;
         this.token = null;
         this.init();
     }
-    
+
     init() {
         // Cargar datos del localStorage
         this.token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
-        
         if (userData) {
             try {
                 this.user = JSON.parse(userData);
@@ -19,57 +18,86 @@ class AuthManager {
                 this.logout();
             }
         }
-        
-        // Verificar token si existe
-        if (this.token) {
-            this.verificarToken();
-        }
+
+        // Configurar formulario de login si existe
+        this.setupLoginForm();
         
         // Actualizar UI
-        this.actualizarUI();
+        this.updateUI();
     }
-    
-    async verificarToken() {
-        try {
-            const response = await apiRequest(CONFIG.ENDPOINTS.VERIFY_TOKEN, {
-                method: 'POST'
-            });
-            
-            if (response.valid) {
-                this.user = response.user;
-                localStorage.setItem('user', JSON.stringify(this.user));
-            } else {
-                this.logout();
-            }
-        } catch (error) {
-            console.error('Error verificando token:', error);
-            this.logout();
+
+    setupLoginForm() {
+        const loginForm = document.getElementById('loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+            console.log('✅ Formulario de login configurado');
         }
     }
-    
-    async login(email, password) {
+
+    async handleLogin(event) {
+        event.preventDefault();
+        
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const submitButton = event.target.querySelector('button[type="submit"]');
+        
+        if (!email || !password) {
+            mostrarMensaje('Por favor, completa todos los campos', 'error');
+            return;
+        }
+        
+        // Validar email básico
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            mostrarMensaje('Por favor, ingresa un email válido', 'error');
+            return;
+        }
+        
+        const originalText = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Iniciando sesión...';
+        
         try {
             const response = await apiRequest(CONFIG.ENDPOINTS.LOGIN, {
                 method: 'POST',
                 body: JSON.stringify({ email, password })
             });
             
-            this.token = response.token;
+            // Manejar respuesta de FastAPI
+            this.token = response.access_token;
             this.user = response.user;
+            
+            if (!this.token || !this.user) {
+                throw new Error('Respuesta de login inválida');
+            }
             
             // Guardar en localStorage
             localStorage.setItem('token', this.token);
             localStorage.setItem('user', JSON.stringify(this.user));
             
-            // Actualizar UI
-            this.actualizarUI();
+            mostrarMensaje(`¡Bienvenido, ${this.user.nombre}!`, 'success');
             
-            return response;
+            // Actualizar UI
+            this.updateUI();
+            
+            // Redirigir según tipo de usuario
+            setTimeout(() => {
+                if (this.user.tipo === 'administrador') {
+                    window.location.href = 'perfil-admin.html';
+                } else {
+                    window.location.href = 'perfil-cliente.html';
+                }
+            }, 1500);
+            
         } catch (error) {
-            throw error;
+            console.error('Error en login:', error);
+            mostrarMensaje(error.message || 'Error al iniciar sesión', 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
         }
     }
-    
+
     async logout() {
         try {
             if (this.token) {
@@ -87,99 +115,96 @@ class AuthManager {
             localStorage.removeItem('user');
             
             // Actualizar UI
-            this.actualizarUI();
+            this.updateUI();
+            
+            mostrarMensaje('Sesión cerrada correctamente', 'info');
             
             // Redirigir si estamos en página protegida
             if (this.esPaginaProtegida()) {
-                window.location.href = 'acceder.html';
+                setTimeout(() => {
+                    window.location.href = 'acceder.html';
+                }, 1000);
             }
         }
     }
-    
+
     isAuthenticated() {
-        return this.token && this.user;
+        return !!(this.token && this.user);
     }
-    
+
     isAdmin() {
         return this.user && this.user.tipo === 'administrador';
     }
-    
+
     getUser() {
         return this.user;
     }
-    
-    getToken() {
-        return this.token;
-    }
-    
-    actualizarUI() {
-        const btnAcceder = document.getElementById('btn-acceder');
-        const adminPanel = document.getElementById('admin-panel');
-        
-        if (this.isAuthenticated()) {
-            // Usuario logueado
-            if (btnAcceder) {
-                btnAcceder.textContent = 'Mi Perfil';
-                btnAcceder.href = this.isAdmin() ? 'perfil-admin.html' : 'perfil-cliente.html';
+
+    updateUI() {
+        // Actualizar botón de acceder en navbar
+        const botonAcceder = document.querySelector('.boton-acceder a');
+        if (botonAcceder) {
+            if (this.isAuthenticated()) {
+                botonAcceder.textContent = `Hola, ${this.user.nombre}`;
+                botonAcceder.href = this.isAdmin() ? 'perfil-admin.html' : 'perfil-cliente.html';
+                botonAcceder.classList.remove('activo');
+            } else {
+                botonAcceder.textContent = 'Acceder';
+                botonAcceder.href = 'acceder.html';
             }
-            
-            // Mostrar panel admin si es administrador
-            if (this.isAdmin() && adminPanel) {
-                adminPanel.style.display = 'block';
-            }
-            
-            // Mostrar botones de admin en noticias
-            if (this.isAdmin()) {
-                document.querySelectorAll('.admin-acciones').forEach(el => {
-                    el.style.display = 'flex';
-                });
-            }
-        } else {
-            // Usuario no logueado
-            if (btnAcceder) {
-                btnAcceder.textContent = 'Acceder';
-                btnAcceder.href = 'acceder.html';
-            }
-            
-            // Ocultar panel admin
-            if (adminPanel) {
-                adminPanel.style.display = 'none';
-            }
-            
-            // Ocultar botones de admin
-            document.querySelectorAll('.admin-acciones').forEach(el => {
-                el.style.display = 'none';
-            });
         }
+
+        // Mostrar/ocultar elementos admin
+        const adminElements = document.querySelectorAll('.admin-only');
+        adminElements.forEach(el => {
+            el.style.display = this.isAdmin() ? 'block' : 'none';
+        });
     }
-    
+
     esPaginaProtegida() {
-        const paginasProtegidas = ['perfil-cliente.html', 'perfil-admin.html'];
+        const paginasProtegidas = ['perfil-cliente.html', 'perfil-admin.html', 'agendar-cita.html'];
         const paginaActual = window.location.pathname.split('/').pop();
         return paginasProtegidas.includes(paginaActual);
     }
-    
+
     requireAuth() {
         if (!this.isAuthenticated()) {
-            window.location.href = 'acceder.html';
+            mostrarMensaje('Debes iniciar sesión para acceder a esta página', 'warning');
+            setTimeout(() => {
+                window.location.href = 'acceder.html';
+            }, 2000);
             return false;
         }
         return true;
     }
-    
+
     requireAdmin() {
+        if (!this.requireAuth()) return false;
+        
         if (!this.isAdmin()) {
-            mostrarMensaje('No tienes permisos para realizar esta acción', 'error');
+            mostrarMensaje('No tienes permisos para acceder a esta página', 'error');
+            setTimeout(() => {
+                window.location.href = 'perfil-cliente.html';
+            }, 2000);
             return false;
         }
         return true;
     }
 }
 
-// Instancia global del auth manager
-const authManager = new AuthManager();
+// Crear instancia global
+const auth = new AuthManager();
+window.auth = auth;
 
-// Función global para cerrar sesión
-function cerrarSesion() {
-    authManager.logout();
-}
+// Verificar autenticación en páginas protegidas al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    const paginaActual = window.location.pathname.split('/').pop();
+    
+    if (paginaActual === 'perfil-admin.html') {
+        auth.requireAdmin();
+    } else if (['perfil-cliente.html', 'agendar-cita.html'].includes(paginaActual)) {
+        auth.requireAuth();
+    }
+});
+
+console.log('✅ Sistema de autenticación inicializado');

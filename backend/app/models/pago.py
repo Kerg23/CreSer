@@ -1,54 +1,51 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, DECIMAL, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy.sql.sqltypes import DECIMAL
 from sqlalchemy.orm import relationship
-from app.config.database import Base
 from datetime import datetime, timezone
+from app.config.database import Base
 
 class Pago(Base):
     __tablename__ = "pagos"
-    __table_args__ = {'extend_existing': True}
-
-    id = Column(Integer, primary_key=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    referencia = Column(String(100), unique=True)
+    
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)  # Nullable para pagos sin usuario
+    nombre_pagador = Column(String(100), nullable=False)
+    email_pagador = Column(String(100), nullable=False)
+    telefono_pagador = Column(String(20), nullable=True)
+    documento_pagador = Column(String(50), nullable=True)
     monto = Column(DECIMAL(10, 2), nullable=False)
-    metodo_pago = Column(String(20), default="qr")
-    estado = Column(String(20), default="pendiente")  # pendiente, aprobado, rechazado
-    concepto = Column(String(255), nullable=False)
-    tipo_compra = Column(String(50), nullable=False)  # servicio_individual, paquete
-    paquete_id = Column(Integer, nullable=True)
-    comprobante = Column(String(255))  # Ruta del archivo de comprobante
-    fecha_pago = Column(DateTime)
-    fecha_aprobacion = Column(DateTime)
-    aprobado_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    notas_admin = Column(Text)
+    concepto = Column(String(200), nullable=False)
+    tipo_compra = Column(String(50), nullable=False)  # creditos, sesion_individual
+    estado = Column(String(20), nullable=False, default="pendiente")  # pendiente, aprobado, rechazado
+    comprobante = Column(String(500), nullable=True)  # Ruta del archivo de comprobante
+    referencia_bancaria = Column(String(100), nullable=True)
+    notas_admin = Column(Text, nullable=True)
+    fecha_aprobacion = Column(DateTime, nullable=True)
     
-    # Datos del usuario (para casos donde no existe cuenta)
-    nombre_pagador = Column(String(100))
-    email_pagador = Column(String(100))
-    telefono_pagador = Column(String(20))
-    documento_pagador = Column(String(20))
-    
+    # Timestamps
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
-    def to_dict(self) -> dict:
+    
+    # CORREGIDO: Relación con lazy loading
+    usuario = relationship("Usuario", back_populates="pagos", lazy="select")
+    
+    def to_dict(self):
+        """Convertir modelo a diccionario"""
         return {
-            "id": self.id,
-            "usuario_id": self.usuario_id,
-            "referencia": self.referencia,
-            "monto": float(self.monto),
-            "metodo_pago": self.metodo_pago,
-            "estado": self.estado,
-            "concepto": self.concepto,
-            "tipo_compra": self.tipo_compra,
-            "comprobante": self.comprobante,
-            "fecha_pago": self.fecha_pago.isoformat() if self.fecha_pago else None,
-            "fecha_aprobacion": self.fecha_aprobacion.isoformat() if self.fecha_aprobacion else None,
-            "notas_admin": self.notas_admin,
-            "nombre_pagador": self.nombre_pagador,
-            "email_pagador": self.email_pagador,
-            "telefono_pagador": self.telefono_pagador,
-            "documento_pagador": self.documento_pagador,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+            'id': self.id,
+            'usuario_id': self.usuario_id,
+            'nombre_pagador': self.nombre_pagador,
+            'email_pagador': self.email_pagador,
+            'telefono_pagador': self.telefono_pagador,
+            'documento_pagador': self.documento_pagador,
+            'monto': float(self.monto),
+            'concepto': self.concepto,
+            'tipo_compra': self.tipo_compra,
+            'estado': self.estado,
+            'comprobante': self.comprobante,
+            'referencia_bancaria': self.referencia_bancaria,
+            'notas_admin': self.notas_admin,
+            'fecha_aprobacion': self.fecha_aprobacion.isoformat() if self.fecha_aprobacion else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

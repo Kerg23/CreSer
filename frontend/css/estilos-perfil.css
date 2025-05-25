@@ -1075,6 +1075,46 @@ main {
     flex-wrap: wrap;
 }
 
+/* Estilos para modales de admin */
+.modal-nuevo-cliente .modal-content,
+.modal-nueva-cita .modal-content {
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.form-group label {
+    color: #333;
+    font-weight: 500;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.btn-generar:hover {
+    background: #138496 !important;
+}
+
+.form-actions button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
 
 
 /* Responsive */

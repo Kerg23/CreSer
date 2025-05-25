@@ -1,125 +1,412 @@
-// Variables globales
+// ============ CONFIGURACIÓN Y VARIABLES GLOBALES ============
 let editandoInfo = false;
 let datosOriginales = {};
+let creditosUsuario = [];
+let citasUsuario = [];
+let loadingStates = new Set();
 
-// Inicialización
+// Cache para optimización
+const dataCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// ============ UTILIDADES DE OPTIMIZACIÓN ============
+
+// Debounce para optimizar eventos
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Cache manager
+class CacheManager {
+    static set(key, data) {
+        dataCache.set(key, {
+            data,
+            timestamp: Date.now()
+        });
+    }
+    
+    static get(key) {
+        const cached = dataCache.get(key);
+        if (!cached) return null;
+        
+        if (Date.now() - cached.timestamp > CACHE_DURATION) {
+            dataCache.delete(key);
+            return null;
+        }
+        
+        return cached.data;
+    }
+    
+    static clear() {
+        dataCache.clear();
+    }
+    
+    static invalidate(pattern) {
+        for (const key of dataCache.keys()) {
+            if (key.includes(pattern)) {
+                dataCache.delete(key);
+            }
+        }
+    }
+}
+
+// Loading manager
+class LoadingManager {
+    static start(operation) {
+        loadingStates.add(operation);
+        this.updateUI();
+    }
+    
+    static end(operation) {
+        loadingStates.delete(operation);
+        this.updateUI();
+    }
+    
+    static updateUI() {
+        const isLoading = loadingStates.size > 0;
+        document.body.classList.toggle('loading', isLoading);
+    }
+}
+
+// Error handler optimizado
+class ErrorHandler {
+    static handle(error, operation) {
+        console.error(`❌ Error en ${operation}:`, error);
+        
+        let message = 'Ha ocurrido un error inesperado';
+        
+        if (error.message.includes('Failed to fetch')) {
+            message = 'Error de conexión. Verifica tu internet.';
+        } else if (error.message.includes('401')) {
+            message = 'Sesión expirada. Redirigiendo...';
+            setTimeout(() => this.logout(), 2000);
+        } else if (error.message.includes('403')) {
+            message = 'No tienes permisos para esta acción';
+        } else if (error.message.includes('404')) {
+            message = 'Recurso no encontrado';
+        } else if (error.message) {
+            message = error.message;
+        }
+        
+        mostrarMensaje(message, 'error');
+    }
+    
+    static logout() {
+        if (typeof auth !== 'undefined' && auth.logout) {
+            auth.logout();
+        } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+    }
+}
+
+// ============ INICIALIZACIÓN OPTIMIZADA ============
+
 document.addEventListener('DOMContentLoaded', function() {
-    if (!authManager.requireAuth()) {
+    console.log('🚀 Inicializando perfil de cliente optimizado...');
+    
+    // Verificar autenticación
+    if (!verificarAutenticacion()) {
         return;
     }
     
-    cargarDatosUsuario();
-    configurarEventos();
-    cargarCreditos();
-    cargarCitas();
-    cargarHistorialPagos();
-    configurarNotificaciones();
+    // Inicializar componentes en paralelo
+    inicializarPerfil();
 });
 
-async function cargarDatosUsuario() {
+function verificarAutenticacion() {
+    // Verificar con authManager o auth
+    const authSystem = window.authManager || window.auth;
+    
+    if (!authSystem || !authSystem.requireAuth()) {
+        console.error('❌ Usuario no autenticado');
+        window.location.href = '/login.html';
+        return false;
+    }
+    
+    // Verificar que es cliente
+    const user = authSystem.getUser();
+    if (user && user.tipo !== 'cliente') {
+        console.error('❌ Acceso denegado - Solo para clientes');
+        window.location.href = '/login.html';
+        return false;
+    }
+    
+    return true;
+}
+
+async function inicializarPerfil() {
     try {
-        const response = await apiRequest(CONFIG.ENDPOINTS.PERFIL);
-        const usuario = response.usuario;
+        // Configurar eventos primero
+        configurarEventos();
         
-        // Llenar formulario con datos
-        document.getElementById('nombre').value = usuario.nombre || '';
-        document.getElementById('email').value = usuario.email || '';
-        document.getElementById('telefono').value = usuario.telefono || '';
-        document.getElementById('documento').value = usuario.documento || '';
-        document.getElementById('fecha-nacimiento').value = usuario.fechaNacimiento ? usuario.fechaNacimiento.split('T')[0] : '';
-        document.getElementById('genero').value = usuario.genero || '';
-        document.getElementById('direccion').value = usuario.direccion || '';
+        // Cargar datos en paralelo
+        await Promise.allSettled([
+            cargarDatosUsuario(),
+            cargarCreditos(),
+            cargarCitas(),
+            cargarHistorialPagos()
+        ]);
         
-        // Actualizar sidebar
-        document.getElementById('nombre-usuario').textContent = usuario.nombre;
-        document.getElementById('email-usuario').textContent = usuario.email;
+        configurarNotificaciones();
         
-        // Configuración de notificaciones
-        if (usuario.configuracion) {
-            document.getElementById('notif-email').checked = usuario.configuracion.notificaciones_email;
-            document.getElementById('notif-sms').checked = usuario.configuracion.notificaciones_sms;
-            document.getElementById('notif-recordatorios').checked = usuario.configuracion.recordatorios_citas;
+        console.log('✅ Perfil de cliente inicializado correctamente');
+        
+    } catch (error) {
+        ErrorHandler.handle(error, 'inicialización del perfil');
+    }
+}
+
+// ============ CARGA DE DATOS OPTIMIZADA ============
+
+async function cargarDatosUsuario() {
+    const operation = 'cargar-usuario';
+    
+    try {
+        LoadingManager.start(operation);
+        console.log('🔄 Cargando datos del usuario...');
+        
+        // Verificar cache
+        const cached = CacheManager.get('usuario-datos');
+        if (cached) {
+            llenarDatosUsuario(cached);
+            console.log('✅ Datos del usuario cargados desde cache');
         }
+        
+        // Cargar datos frescos
+        const response = await apiRequest(CONFIG.ENDPOINTS.PERFIL);
+        const usuario = response.usuario || response;
+        
+        CacheManager.set('usuario-datos', usuario);
+        llenarDatosUsuario(usuario);
         
         // Guardar datos originales
         datosOriginales = { ...usuario };
         
     } catch (error) {
-        console.error('Error cargando datos del usuario:', error);
-        mostrarMensaje('Error al cargar tus datos', 'error');
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
+    }
+}
+
+function llenarDatosUsuario(usuario) {
+    // Llenar formulario con datos
+    const campos = {
+        'nombre': usuario.nombre || '',
+        'email': usuario.email || '',
+        'telefono': usuario.telefono || '',
+        'documento': usuario.documento || ''
+    };
+    
+    Object.entries(campos).forEach(([id, valor]) => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            elemento.value = valor;
+        }
+    });
+    
+    // Actualizar sidebar
+    const nombreUsuario = document.getElementById('nombre-usuario');
+    const emailUsuario = document.getElementById('email-usuario');
+    
+    if (nombreUsuario) nombreUsuario.textContent = usuario.nombre || 'Usuario';
+    if (emailUsuario) emailUsuario.textContent = usuario.email || '';
+    
+    // Configuración de notificaciones
+    if (usuario.configuracion) {
+        const notifConfig = usuario.configuracion;
+        const checkboxes = {
+            'notif-email': notifConfig.notificaciones_email,
+            'notif-sms': notifConfig.notificaciones_sms,
+            'notif-recordatorios': notifConfig.recordatorios_citas
+        };
+        
+        Object.entries(checkboxes).forEach(([id, checked]) => {
+            const elemento = document.getElementById(id);
+            if (elemento) elemento.checked = checked;
+        });
     }
 }
 
 async function cargarCreditos() {
+    const operation = 'cargar-creditos';
+    
     try {
-        const response = await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/creditos`);
-        const creditos = response.creditos || [];
+        LoadingManager.start(operation);
+        console.log('🔄 Cargando créditos del usuario...');
         
-        const container = document.querySelector('.creditos-grid');
-        container.innerHTML = '';
-        
-        if (creditos.length === 0) {
-            container.innerHTML = '<p>No tienes créditos disponibles. <a href="comprar.html">Compra créditos aquí</a></p>';
-            return;
+        // Verificar cache
+        const cached = CacheManager.get('usuario-creditos');
+        if (cached) {
+            renderizarCreditos(cached);
+            console.log('✅ Créditos cargados desde cache');
         }
         
-        creditos.forEach(credito => {
-            const creditoCard = document.createElement('div');
-            creditoCard.className = credito.cantidad > 0 ? 'credito-card' : 'credito-card sin-creditos';
-            
-            creditoCard.innerHTML = `
-                <div class="credito-header">
-                    <h3>${credito.nombre}</h3>
-                    <span class="creditos-disponibles">${credito.cantidad} créditos</span>
-                </div>
-                <p>Válido para sesiones de ${credito.duracion || '60'} minutos</p>
-                ${credito.cantidad > 0 
-                    ? `<button class="btn-usar-credito" onclick="agendarCita('${credito.servicio}')">Agendar Cita</button>`
-                    : `<a href="comprar.html" class="btn-comprar">Comprar Créditos</a>`
-                }
-            `;
-            
-            container.appendChild(creditoCard);
-        });
+        // Cargar datos frescos
+        const response = await apiRequest(CONFIG.ENDPOINTS.CREDITOS);
+        const creditos = response.creditos || response || [];
+        
+        CacheManager.set('usuario-creditos', creditos);
+        creditosUsuario = creditos;
+        renderizarCreditos(creditos);
         
     } catch (error) {
-        console.error('Error cargando créditos:', error);
-        mostrarMensaje('Error al cargar tus créditos', 'error');
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
     }
+}
+
+function renderizarCreditos(creditos) {
+    const container = document.querySelector('.creditos-grid');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (!creditos || creditos.length === 0) {
+        container.innerHTML = `
+            <div class="sin-creditos">
+                <p>No tienes créditos disponibles.</p>
+                <a href="comprar.html" class="btn btn-primary">Comprar créditos aquí</a>
+            </div>
+        `;
+        return;
+    }
+    
+    // Usar fragment para mejor rendimiento
+    const fragment = document.createDocumentFragment();
+    
+    creditos.forEach(credito => {
+        const creditoCard = document.createElement('div');
+        const cantidadDisponible = credito.cantidad_disponible || credito.cantidad || 0;
+        
+        creditoCard.className = cantidadDisponible > 0 ? 'credito-card' : 'credito-card sin-creditos';
+        
+        creditoCard.innerHTML = `
+            <div class="credito-header">
+                <h4>${credito.servicio_nombre || credito.nombre}</h4>
+                <span class="credito-cantidad">${cantidadDisponible} créditos</span>
+            </div>
+            <p class="credito-descripcion">
+                Válido para sesiones de ${credito.duracion || '60'} minutos
+            </p>
+            <div class="credito-acciones">
+                ${cantidadDisponible > 0 ? 
+                    `<button onclick="agendarCitaConCredito(${credito.servicio_id || credito.id})" class="btn btn-sm btn-primary">Agendar Cita</button>` : 
+                    `<a href="comprar.html?servicio=${credito.servicio_id || credito.id}" class="btn btn-sm btn-outline">Comprar Créditos</a>`
+                }
+            </div>
+        `;
+        
+        fragment.appendChild(creditoCard);
+    });
+    
+    container.appendChild(fragment);
 }
 
 async function cargarCitas() {
+    const operation = 'cargar-citas';
+    
     try {
-        const response = await apiRequest(CONFIG.ENDPOINTS.CITAS);
-        const citas = response.citas || [];
+        LoadingManager.start(operation);
+        console.log('🔄 Cargando citas del usuario...');
         
-        mostrarCitasPorEstado(citas);
+        // Verificar cache
+        const cached = CacheManager.get('usuario-citas');
+        if (cached) {
+            procesarCitas(cached);
+            console.log('✅ Citas cargadas desde cache');
+        }
+        
+        // Cargar datos frescos
+        const response = await apiRequest(CONFIG.ENDPOINTS.MIS_CITAS);
+        const citas = response.citas || response || [];
+        
+        CacheManager.set('usuario-citas', citas);
+        citasUsuario = citas;
+        procesarCitas(citas);
         
     } catch (error) {
-        console.error('Error cargando citas:', error);
-        mostrarMensaje('Error al cargar tus citas', 'error');
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
     }
 }
 
-function mostrarCitasPorEstado(citas) {
+function procesarCitas(citas) {
     const ahora = new Date();
     
-    const citasProximas = citas.filter(cita => new Date(cita.fecha) >= ahora && cita.estado !== 'cancelada');
-    const citasPasadas = citas.filter(cita => new Date(cita.fecha) < ahora || cita.estado === 'completada');
+    // Filtrar citas por estado
+    const citasProximas = citas.filter(cita => {
+        const fechaCita = new Date(cita.fecha);
+        return fechaCita >= ahora && ['agendada', 'confirmada'].includes(cita.estado);
+    });
+    
+    const citasPasadas = citas.filter(cita => {
+        const fechaCita = new Date(cita.fecha);
+        return fechaCita < ahora || cita.estado === 'completada';
+    });
+    
     const citasCanceladas = citas.filter(cita => cita.estado === 'cancelada');
     
+    // Actualizar contadores en tabs
+    actualizarContadoresTabs({
+        proximas: citasProximas.length,
+        pasadas: citasPasadas.length,
+        canceladas: citasCanceladas.length
+    });
+    
     // Mostrar citas próximas por defecto
-    mostrarCitas(citasProximas, 'proximas');
+    renderizarCitas(citasProximas, 'proximas');
 }
 
-function mostrarCitas(citas, tipo) {
+function actualizarContadoresTabs(contadores) {
+    Object.entries(contadores).forEach(([tipo, count]) => {
+        const tab = document.getElementById(`tab-${tipo}`);
+        if (tab) {
+            const counter = tab.querySelector('.counter');
+            if (counter) {
+                counter.textContent = count;
+            }
+        }
+    });
+}
+
+function renderizarCitas(citas, tipo) {
     const container = document.querySelector('.citas-lista');
+    if (!container) return;
+    
     container.innerHTML = '';
     
     if (citas.length === 0) {
-        container.innerHTML = '<p>No tienes citas en esta categoría.</p>';
+        const mensajes = {
+            'proximas': 'No tienes citas próximas.',
+            'pasadas': 'No tienes historial de citas.',
+            'canceladas': 'No tienes citas canceladas.'
+        };
+        
+        container.innerHTML = `
+            <div class="sin-citas">
+                <p>${mensajes[tipo] || 'No hay citas en esta categoría.'}</p>
+                ${tipo === 'proximas' ? '<button onclick="mostrarModalNuevaCita()" class="btn btn-primary">Agendar Nueva Cita</button>' : ''}
+            </div>
+        `;
         return;
     }
+    
+    // Usar fragment para mejor rendimiento
+    const fragment = document.createDocumentFragment();
     
     citas.forEach(cita => {
         const citaCard = document.createElement('div');
@@ -131,256 +418,468 @@ function mostrarCitas(citas, tipo) {
         
         citaCard.innerHTML = `
             <div class="cita-fecha">
-                <span class="dia">${dia}</span>
-                <span class="mes">${mes}</span>
+                <div class="dia">${dia}</div>
+                <div class="mes">${mes}</div>
             </div>
             <div class="cita-info">
-                <h4>${cita.servicio_nombre || cita.servicio}</h4>
+                <h4>${cita.servicio_nombre || 'Servicio'}</h4>
                 <p><strong>Fecha:</strong> ${formatearFecha(cita.fecha)}</p>
                 <p><strong>Hora:</strong> ${cita.hora}</p>
                 <p><strong>Modalidad:</strong> ${cita.modalidad}</p>
-                <p><strong>Psicóloga:</strong> Diana Milena Rodríguez</p>
                 <p><strong>Estado:</strong> <span class="estado ${cita.estado}">${cita.estado}</span></p>
+                ${cita.link_virtual ? `<p><strong>Link:</strong> <a href="${cita.link_virtual}" target="_blank">Unirse a la sesión</a></p>` : ''}
             </div>
             <div class="cita-acciones">
-                ${tipo === 'proximas' ? `
-                    <button class="btn-reprogramar" onclick="reprogramarCita(${cita.id})">Reprogramar</button>
-                    <button class="btn-cancelar-cita" onclick="cancelarCita(${cita.id})">Cancelar</button>
-                ` : tipo === 'pasadas' ? `
-                    <button class="btn-descargar" onclick="descargarComprobante(${cita.id})">Descargar Comprobante</button>
+                ${tipo === 'proximas' && cita.estado === 'agendada' ? `
+                    <button onclick="cancelarCita(${cita.id})" class="btn btn-sm btn-danger">Cancelar</button>
                 ` : ''}
+                <button onclick="verDetallesCita(${cita.id})" class="btn btn-sm btn-outline">Ver Detalles</button>
             </div>
         `;
         
-        container.appendChild(citaCard);
+        fragment.appendChild(citaCard);
     });
-}
-
-function filtrarCitas(tipo) {
-    // Actualizar tabs activos
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
     
-    // Recargar citas para mostrar el tipo seleccionado
-    cargarCitas().then(() => {
-        // Aquí podrías filtrar específicamente por tipo si es necesario
-    });
-}
-
-async function cancelarCita(citaId) {
-    if (!confirm('¿Estás seguro de que quieres cancelar esta cita?')) return;
-    
-    try {
-        await apiRequest(`${CONFIG.ENDPOINTS.CANCELAR_CITA}/${citaId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ estado: 'cancelada' })
-        });
-        
-        mostrarMensaje('Cita cancelada exitosamente', 'success');
-        await cargarCitas();
-        await cargarCreditos(); // Recargar créditos ya que se devuelve el crédito
-        
-    } catch (error) {
-        console.error('Error cancelando cita:', error);
-        mostrarMensaje('Error al cancelar la cita', 'error');
-    }
+    container.appendChild(fragment);
 }
 
 async function cargarHistorialPagos() {
+    const operation = 'cargar-pagos';
+    
     try {
-        const response = await apiRequest(CONFIG.ENDPOINTS.PAGOS);
-        const pagos = response.pagos || [];
+        LoadingManager.start(operation);
+        console.log('🔄 Cargando historial de pagos...');
         
-        const tbody = document.querySelector('.pagos-tabla tbody');
-        tbody.innerHTML = '';
+        // Para MVP, usar datos de ejemplo
+        const pagos = [
+            {
+                id: 1,
+                fecha: '2025-05-20',
+                concepto: 'Paquete Psicoterapia 4 Sesiones',
+                metodo: 'QR',
+                monto: 260000,
+                estado: 'aprobado'
+            },
+            {
+                id: 2,
+                fecha: '2025-05-10',
+                concepto: 'Orientación Familiar',
+                metodo: 'QR',
+                monto: 110000,
+                estado: 'aprobado'
+            }
+        ];
         
-        pagos.forEach(pago => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${formatearFecha(pago.createdAt)}</td>
-                <td>${pago.concepto}</td>
-                <td>${pago.metodo_pago.toUpperCase()}</td>
-                <td>${formatearPrecio(pago.monto)}</td>
-                <td><span class="estado ${pago.estado}">${pago.estado}</span></td>
-                <td><button class="btn-ver-detalle" onclick="verDetallePago(${pago.id})">Ver Detalle</button></td>
-            `;
-            tbody.appendChild(row);
-        });
+        renderizarHistorialPagos(pagos);
         
     } catch (error) {
-        console.error('Error cargando historial de pagos:', error);
-        mostrarMensaje('Error al cargar el historial de pagos', 'error');
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
     }
 }
 
+function renderizarHistorialPagos(pagos) {
+    const tbody = document.querySelector('#tabla-pagos tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (!pagos || pagos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No hay historial de pagos</td></tr>';
+        return;
+    }
+    
+    const fragment = document.createDocumentFragment();
+    
+    pagos.forEach(pago => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${formatearFecha(pago.fecha)}</td>
+            <td>${pago.concepto}</td>
+            <td>${pago.metodo}</td>
+            <td>${formatearPrecio(pago.monto)}</td>
+            <td><span class="estado ${pago.estado}">${pago.estado}</span></td>
+            <td>
+                <button onclick="verComprobantePago(${pago.id})" class="btn btn-sm btn-outline">Ver</button>
+            </td>
+        `;
+        fragment.appendChild(row);
+    });
+    
+    tbody.appendChild(fragment);
+}
+
+// ============ CONFIGURACIÓN DE EVENTOS OPTIMIZADA ============
+
 function configurarEventos() {
-    // Formulario de información personal
-    const formInfo = document.getElementById('form-info-personal');
-    if (formInfo) {
-        formInfo.addEventListener('submit', guardarInformacion);
-    }
+    console.log('🔧 Configurando eventos del perfil...');
     
-    // Formulario de cambio de contraseña
-    const formPassword = document.getElementById('form-cambiar-password');
-    if (formPassword) {
-        formPassword.addEventListener('submit', cambiarPassword);
-    }
-    
-    // Navegación del perfil
+    // Navegación del sidebar
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', function(e) {
             e.preventDefault();
-            const href = this.getAttribute('href');
-            if (href && href.includes('mostrarSeccion')) {
-                const seccion = href.match(/'([^']+)'/)[1];
+            const seccion = this.dataset.section;
+            if (seccion) {
                 mostrarSeccion(seccion);
             }
         });
     });
     
+    // Botón editar información
+    const btnEditar = document.getElementById('btn-editar-info');
+    if (btnEditar) {
+        btnEditar.addEventListener('click', toggleEditarInfo);
+    }
+    
+    // Formulario de información personal
+    const formInfo = document.getElementById('form-info-personal');
+    if (formInfo) {
+        formInfo.addEventListener('submit', guardarInformacionPersonal);
+    }
+    
+    // Botón cancelar edición
+    const btnCancelar = document.getElementById('btn-cancelar-info');
+    if (btnCancelar) {
+        btnCancelar.addEventListener('click', cancelarEdicion);
+    }
+    
+    // Formulario de cambiar contraseña
+    const formPassword = document.getElementById('form-cambiar-password');
+    if (formPassword) {
+        formPassword.addEventListener('submit', cambiarPassword);
+    }
+    
+    // Tabs de citas
+    document.querySelectorAll('.tab-citas').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tipo = this.dataset.tipo;
+            if (tipo) {
+                cambiarTabCitas(tipo);
+            }
+        });
+    });
+    
     // Avatar
+    const btnCambiarAvatar = document.getElementById('btn-cambiar-avatar');
     const inputAvatar = document.getElementById('input-avatar');
-    if (inputAvatar) {
+    
+    if (btnCambiarAvatar && inputAvatar) {
+        btnCambiarAvatar.addEventListener('click', () => inputAvatar.click());
         inputAvatar.addEventListener('change', cambiarAvatar);
     }
+    
+    // Botón nueva cita
+    const btnNuevaCita = document.getElementById('btn-nueva-cita');
+    if (btnNuevaCita) {
+        btnNuevaCita.addEventListener('click', mostrarModalNuevaCita);
+    }
+    
+    // Botón cerrar sesión
+    const btnCerrarSesion = document.getElementById('btn-cerrar-sesion');
+    if (btnCerrarSesion) {
+        btnCerrarSesion.addEventListener('click', cerrarSesion);
+    }
+    
+    // Botón eliminar cuenta
+    const btnEliminarCuenta = document.getElementById('btn-eliminar-cuenta');
+    if (btnEliminarCuenta) {
+        btnEliminarCuenta.addEventListener('click', confirmarEliminacion);
+    }
+    
+    console.log('✅ Eventos configurados correctamente');
 }
 
-function habilitarEdicion() {
-    editandoInfo = true;
+// ============ GESTIÓN DE INFORMACIÓN PERSONAL ============
+
+function toggleEditarInfo() {
+    editandoInfo = !editandoInfo;
     
-    // Habilitar campos
-    document.querySelectorAll('#form-info-personal input, #form-info-personal select').forEach(field => {
-        if (field.id !== 'email' && field.id !== 'documento') { // Email y documento no se pueden cambiar
-            field.removeAttribute('readonly');
-            field.removeAttribute('disabled');
+    const campos = ['nombre', 'telefono', 'documento'];
+    const btnEditar = document.getElementById('btn-editar-info');
+    const formActions = document.getElementById('form-actions');
+    
+    campos.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (elemento) {
+            elemento.disabled = !editandoInfo;
         }
     });
     
-    // Mostrar botones de acción
-    document.getElementById('form-actions').style.display = 'flex';
+    if (btnEditar) {
+        btnEditar.textContent = editandoInfo ? 'Editando...' : 'Editar';
+        btnEditar.disabled = editandoInfo;
+    }
     
-    // Cambiar texto del botón
-    document.querySelector('.btn-editar').textContent = 'Editando...';
-    document.querySelector('.btn-editar').disabled = true;
+    if (formActions) {
+        formActions.style.display = editandoInfo ? 'flex' : 'none';
+    }
+    
+    if (!editandoInfo) {
+        restaurarDatosOriginales();
+    }
 }
 
-async function guardarInformacion(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const datos = {
-        nombre: formData.get('nombre'),
-        telefono: formData.get('telefono'),
-        fechaNacimiento: formData.get('fecha-nacimiento'),
-        genero: formData.get('genero'),
-        direccion: formData.get('direccion')
-    };
-    
-    try {
-        await apiRequest(CONFIG.ENDPOINTS.PERFIL, {
-            method: 'PUT',
-            body: JSON.stringify(datos)
-        });
-        
-        mostrarMensaje('Información actualizada exitosamente', 'success');
-        cancelarEdicion();
-        await cargarDatosUsuario();
-        
-    } catch (error) {
-        console.error('Error actualizando información:', error);
-        mostrarMensaje('Error al actualizar la información', 'error');
-    }
+function restaurarDatosOriginales() {
+    const campos = ['nombre', 'telefono', 'documento'];
+    campos.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        if (elemento && datosOriginales[campo] !== undefined) {
+            elemento.value = datosOriginales[campo] || '';
+        }
+    });
 }
 
 function cancelarEdicion() {
-    editandoInfo = false;
-    
-    // Deshabilitar campos
-    document.querySelectorAll('#form-info-personal input, #form-info-personal select').forEach(field => {
-        field.setAttribute('readonly', true);
-        if (field.tagName === 'SELECT') {
-            field.setAttribute('disabled', true);
-        }
-    });
-    
-    // Ocultar botones de acción
-    document.getElementById('form-actions').style.display = 'none';
-    
-    // Restaurar botón editar
-    document.querySelector('.btn-editar').textContent = 'Editar';
-    document.querySelector('.btn-editar').disabled = false;
-    
-    // Restaurar datos originales
-    cargarDatosUsuario();
+    if (editandoInfo) {
+        toggleEditarInfo();
+    }
 }
 
-async function cambiarPassword(e) {
-    e.preventDefault();
+async function guardarInformacionPersonal(event) {
+    event.preventDefault();
     
-    const formData = new FormData(e.target);
-    const passwordActual = formData.get('password-actual');
-    const passwordNueva = formData.get('password-nueva');
-    const passwordConfirmar = formData.get('password-confirmar');
-    
-    if (passwordNueva !== passwordConfirmar) {
-        mostrarMensaje('Las contraseñas no coinciden', 'error');
-        return;
-    }
-    
-    if (passwordNueva.length < 6) {
-        mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'error');
-        return;
-    }
+    const operation = 'guardar-info';
     
     try {
-        await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/cambiar-password`, {
+        LoadingManager.start(operation);
+        
+        const formData = new FormData(event.target);
+        const datosActualizados = {
+            nombre: formData.get('nombre'),
+            telefono: formData.get('telefono'),
+            documento: formData.get('documento')
+        };
+        
+        await apiRequest(CONFIG.ENDPOINTS.PERFIL, {
+            method: 'PUT',
+            body: JSON.stringify(datosActualizados)
+        });
+        
+        mostrarMensaje('Información actualizada correctamente', 'success');
+        
+        // Actualizar datos originales y cache
+        datosOriginales = { ...datosOriginales, ...datosActualizados };
+        CacheManager.invalidate('usuario');
+        
+        toggleEditarInfo();
+        
+    } catch (error) {
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
+    }
+}
+
+async function cambiarPassword(event) {
+    event.preventDefault();
+    
+    const operation = 'cambiar-password';
+    
+    try {
+        LoadingManager.start(operation);
+        
+        const formData = new FormData(event.target);
+        const passwordActual = formData.get('password-actual');
+        const passwordNueva = formData.get('password-nueva');
+        const passwordConfirmar = formData.get('password-confirmar');
+        
+        if (passwordNueva !== passwordConfirmar) {
+            mostrarMensaje('Las contraseñas no coinciden', 'error');
+            return;
+        }
+        
+        if (passwordNueva.length < 6) {
+            mostrarMensaje('La contraseña debe tener al menos 6 caracteres', 'error');
+            return;
+        }
+        
+        await apiRequest(CONFIG.ENDPOINTS.CAMBIAR_PASSWORD, {
             method: 'PUT',
             body: JSON.stringify({
-                passwordActual,
-                passwordNueva
+                password_actual: passwordActual,
+                password_nueva: passwordNueva
             })
         });
         
-        mostrarMensaje('Contraseña cambiada exitosamente', 'success');
-        e.target.reset();
+        mostrarMensaje('Contraseña cambiada correctamente', 'success');
+        event.target.reset();
         
     } catch (error) {
-        console.error('Error cambiando contraseña:', error);
-        mostrarMensaje('Error al cambiar la contraseña. Verifica tu contraseña actual.', 'error');
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
     }
 }
 
-function configurarNotificaciones() {
-    const checkboxes = ['notif-email', 'notif-sms', 'notif-recordatorios'];
+// ============ GESTIÓN DE CITAS ============
+
+function cambiarTabCitas(tipo) {
+    // Actualizar tabs activos
+    document.querySelectorAll('.tab-citas').forEach(tab => {
+        tab.classList.remove('active');
+    });
     
-    checkboxes.forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox) {
-            checkbox.addEventListener('change', async function() {
-                try {
-                    const configuracion = {
-                        notificaciones_email: document.getElementById('notif-email').checked,
-                        notificaciones_sms: document.getElementById('notif-sms').checked,
-                        recordatorios_citas: document.getElementById('notif-recordatorios').checked
-                    };
-                    
-                    await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/configuracion`, {
-                        method: 'PUT',
-                        body: JSON.stringify({ configuracion })
-                    });
-                    
-                    mostrarMensaje('Configuración actualizada', 'success');
-                    
-                } catch (error) {
-                    console.error('Error actualizando configuración:', error);
-                    mostrarMensaje('Error al actualizar la configuración', 'error');
-                    // Revertir el cambio
-                    this.checked = !this.checked;
-                }
+    const tabActivo = document.querySelector(`[data-tipo="${tipo}"]`);
+    if (tabActivo) {
+        tabActivo.classList.add('active');
+    }
+    
+    // Filtrar y mostrar citas según el tipo
+    const ahora = new Date();
+    let citasFiltradas = [];
+    
+    switch (tipo) {
+        case 'proximas':
+            citasFiltradas = citasUsuario.filter(cita => {
+                const fechaCita = new Date(cita.fecha);
+                return fechaCita >= ahora && ['agendada', 'confirmada'].includes(cita.estado);
             });
+            break;
+        case 'pasadas':
+            citasFiltradas = citasUsuario.filter(cita => {
+                const fechaCita = new Date(cita.fecha);
+                return fechaCita < ahora || cita.estado === 'completada';
+            });
+            break;
+        case 'canceladas':
+            citasFiltradas = citasUsuario.filter(cita => cita.estado === 'cancelada');
+            break;
+    }
+    
+    renderizarCitas(citasFiltradas, tipo);
+}
+
+async function cancelarCita(citaId) {
+    if (!confirm('¿Estás seguro de que quieres cancelar esta cita?')) return;
+    
+    const operation = `cancelar-cita-${citaId}`;
+    
+    try {
+        LoadingManager.start(operation);
+        
+        const motivo = prompt('Motivo de la cancelación (opcional):');
+        
+        await apiRequest(`${CONFIG.ENDPOINTS.CITAS}/${citaId}/cancelar`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                motivo: motivo || 'Cancelada por el cliente'
+            })
+        });
+        
+        mostrarMensaje('Cita cancelada exitosamente', 'success');
+        
+        // Invalidar cache y recargar datos
+        CacheManager.invalidate('citas');
+        CacheManager.invalidate('creditos');
+        
+        await Promise.all([
+            cargarCitas(),
+            cargarCreditos()
+        ]);
+        
+    } catch (error) {
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
+    }
+}
+
+function verDetallesCita(citaId) {
+    const cita = citasUsuario.find(c => c.id === citaId);
+    if (!cita) return;
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-detalles-cita';
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(0,0,0,0.5); display: flex; align-items: center; 
+        justify-content: center; z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3>Detalles de la Cita</h3>
+                <button onclick="this.closest('.modal-detalles-cita').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div class="cita-detalles">
+                <p><strong>Servicio:</strong> ${cita.servicio_nombre}</p>
+                <p><strong>Fecha:</strong> ${formatearFecha(cita.fecha)}</p>
+                <p><strong>Hora:</strong> ${cita.hora}</p>
+                <p><strong>Modalidad:</strong> ${cita.modalidad}</p>
+                <p><strong>Estado:</strong> <span class="estado ${cita.estado}">${cita.estado}</span></p>
+                ${cita.comentarios_cliente ? `<p><strong>Tus comentarios:</strong> ${cita.comentarios_cliente}</p>` : ''}
+                ${cita.link_virtual ? `<p><strong>Link de la sesión:</strong> <a href="${cita.link_virtual}" target="_blank">Unirse</a></p>` : ''}
+            </div>
+            <div class="modal-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="this.closest('.modal-detalles-cita').remove()" class="btn btn-secondary">Cerrar</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Cerrar modal al hacer click fuera
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
         }
     });
 }
+
+function mostrarModalNuevaCita() {
+    // Redirigir a página de agendar cita
+    window.location.href = '/agendar-cita.html';
+}
+
+function agendarCitaConCredito(servicioId) {
+    // Redirigir a página de agendar cita con servicio preseleccionado
+    window.location.href = `/agendar-cita.html?servicio=${servicioId}`;
+}
+
+// ============ CONFIGURACIÓN Y NOTIFICACIONES ============
+
+function configurarNotificaciones() {
+    const switches = ['notif-email', 'notif-sms', 'notif-recordatorios'];
+    
+    switches.forEach(switchId => {
+        const elemento = document.getElementById(switchId);
+        if (elemento) {
+            elemento.addEventListener('change', debounce(guardarConfiguracionNotificaciones, 500));
+        }
+    });
+}
+
+async function guardarConfiguracionNotificaciones() {
+    const operation = 'guardar-notificaciones';
+    
+    try {
+        LoadingManager.start(operation);
+        
+        const configuracion = {
+            notificaciones_email: document.getElementById('notif-email')?.checked || false,
+            notificaciones_sms: document.getElementById('notif-sms')?.checked || false,
+            recordatorios_citas: document.getElementById('notif-recordatorios')?.checked || false
+        };
+        
+        await apiRequest(CONFIG.ENDPOINTS.CONFIGURACION, {
+            method: 'PUT',
+            body: JSON.stringify(configuracion)
+        });
+        
+        mostrarMensaje('Configuración de notificaciones actualizada', 'success');
+        
+    } catch (error) {
+        ErrorHandler.handle(error, operation);
+        // Revertir cambios en caso de error
+        await cargarDatosUsuario();
+    } finally {
+        LoadingManager.end(operation);
+    }
+}
+
+// ============ FUNCIONES AUXILIARES ============
 
 function mostrarSeccion(seccionId) {
     // Ocultar todas las secciones
@@ -399,50 +898,52 @@ function mostrarSeccion(seccionId) {
         item.classList.remove('active');
     });
     
-    // Encontrar y activar el nav-item correspondiente
-    const navItem = document.querySelector(`[onclick*="${seccionId}"]`);
+    const navItem = document.querySelector(`[data-section="${seccionId}"]`);
     if (navItem) {
         navItem.classList.add('active');
     }
 }
 
-function agendarCita(servicio) {
-    window.location.href = `agendar-cita.html?servicio=${servicio}`;
-}
-
-function reprogramarCita(citaId) {
-    mostrarMensaje('Funcionalidad de reprogramación en desarrollo', 'info');
-}
-
-function descargarComprobante(citaId) {
-    window.open(`${CONFIG.API_BASE_URL}/citas/${citaId}/comprobante`, '_blank');
-}
-
-function verDetallePago(pagoId) {
-    mostrarMensaje('Funcionalidad de detalle de pago en desarrollo', 'info');
-}
-
-async function cambiarAvatar() {
+async function cambiarAvatar(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    const operation = 'cambiar-avatar';
+    
     try {
-        validarArchivo(file);
+        LoadingManager.start(operation);
+        
+        // Validar archivo
+        if (file.size > 5 * 1024 * 1024) { // 5MB
+            throw new Error('El archivo es demasiado grande. Máximo 5MB.');
+        }
+        
+        if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+            throw new Error('Tipo de archivo no permitido. Solo JPG, JPEG y PNG.');
+        }
         
         const formData = new FormData();
         formData.append('avatar', file);
         
-        const response = await uploadFile(`${CONFIG.ENDPOINTS.USUARIOS}/avatar`, formData);
+        const response = await apiRequestWithFile('/usuarios/avatar', formData);
         
         // Actualizar imagen del avatar
-        document.getElementById('avatar-usuario').src = response.avatarUrl;
+        const avatarImg = document.getElementById('avatar-usuario');
+        if (avatarImg && response.avatarUrl) {
+            avatarImg.src = response.avatarUrl;
+        }
         
         mostrarMensaje('Avatar actualizado exitosamente', 'success');
         
     } catch (error) {
-        console.error('Error actualizando avatar:', error);
-        mostrarMensaje('Error al actualizar el avatar', 'error');
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
     }
+}
+
+function verComprobantePago(pagoId) {
+    mostrarMensaje('Funcionalidad de comprobantes en desarrollo', 'info');
 }
 
 async function confirmarEliminacion() {
@@ -454,8 +955,12 @@ async function confirmarEliminacion() {
         return;
     }
     
+    const operation = 'eliminar-cuenta';
+    
     try {
-        await apiRequest(`${CONFIG.ENDPOINTS.USUARIOS}/eliminar`, {
+        LoadingManager.start(operation);
+        
+        await apiRequest('/usuarios/eliminar', {
             method: 'DELETE'
         });
         
@@ -463,11 +968,26 @@ async function confirmarEliminacion() {
         
         // Cerrar sesión y redirigir
         setTimeout(() => {
-            authManager.logout();
+            ErrorHandler.logout();
         }, 2000);
         
     } catch (error) {
-        console.error('Error eliminando cuenta:', error);
-        mostrarMensaje('Error al eliminar la cuenta', 'error');
+        ErrorHandler.handle(error, operation);
+    } finally {
+        LoadingManager.end(operation);
     }
 }
+
+function cerrarSesion() {
+    if (confirm('¿Estás seguro de que quieres cerrar la sesión?')) {
+        CacheManager.clear();
+        ErrorHandler.logout();
+    }
+}
+
+// Limpiar cache cuando se cierra la página
+window.addEventListener('beforeunload', function() {
+    CacheManager.clear();
+});
+
+console.log('✅ Perfil de cliente optimizado cargado correctamente');

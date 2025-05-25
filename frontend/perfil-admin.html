@@ -9,23 +9,27 @@
     <link rel="stylesheet" href="css/estilos-navbar.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- NUEVO: Chart.js para reportes -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
 </head>
 
 <body>
     <header>
         <div class="navbar">
             <div class="logo">
-                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1">
-                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
             </div>
             <nav class="menu">
                 <a href="index.html">Inicio</a>
                 <a href="servicios.html">Servicios</a>
                 <a href="comprar.html">Comprar</a>
                 <a href="noticias.html">Noticias</a>
-                <a href="contacto.html">Contacto</a>
                 <div class="boton-acceder">
-                    <a href="#" onclick="cerrarSesion()">Cerrar Sesión</a>
+                    <a href="#" onclick="cerrarSesion()" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                    </a>
                 </div>
             </nav>
         </div>
@@ -36,6 +40,12 @@
             <h1>Panel de Administración</h1>
             <div class="subtitulo">
                 <p>Gestión completa del sistema CreSer</p>
+                <div class="admin-info" style="margin-top: 10px;">
+                    <span id="admin-nombre" style="font-weight: bold;">Cargando...</span>
+                    <span class="admin-badge" style="background: #007bff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-left: 10px;">Administrador</span>
+                    <!-- NUEVO: Indicador de última actualización -->
+                    <span id="ultima-actualizacion" style="margin-left: 20px; font-size: 12px; color: #666;"></span>
+                </div>
             </div>
         </section>
 
@@ -45,12 +55,12 @@
                     <!-- Sidebar de navegación admin -->
                     <div class="perfil-sidebar admin">
                         <div class="perfil-avatar">
-                            <img src="recursos/avatar-admin.png" alt="Avatar Admin" id="avatar-admin">
+                            <img src="recursos/avatar-admin.png" alt="Avatar Admin" id="avatar-admin" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMDA3YmZmIi8+Cjx0ZXh0IHg9IjUwIiB5PSI2NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjQwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QTwvdGV4dD4KPC9zdmc+'">
                             <button class="btn-cambiar-avatar" onclick="cambiarAvatar()">Cambiar Foto</button>
                         </div>
                         <div class="perfil-info-basica">
-                            <h3 id="nombre-admin">Diana Milena Rodríguez</h3>
-                            <p id="email-admin">admin@creser.com</p>
+                            <h3 id="nombre-admin-sidebar">Cargando...</h3>
+                            <p id="email-admin-sidebar">Cargando...</p>
                             <span class="badge-admin">Administrador</span>
                         </div>
                         <nav class="perfil-nav">
@@ -73,6 +83,12 @@
                                 <i class="fas fa-cog"></i> Configuración
                             </a>
                         </nav>
+                        
+                        <div class="sidebar-logout" style="margin-top: 20px; padding: 10px;">
+                            <button onclick="cerrarSesion()" class="btn-logout-sidebar" style="width: 100%; padding: 10px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Contenido principal admin -->
@@ -82,61 +98,58 @@
                             <div class="section-header">
                                 <h2>Dashboard</h2>
                                 <div class="fecha-actual">Hoy: <span id="fecha-hoy"></span></div>
+                                <button onclick="cargarDashboard()" class="btn-actualizar" style="margin-left: 20px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                    <i class="fas fa-sync-alt"></i> Actualizar
+                                </button>
                             </div>
-                            <div class="stats-grid">
+                            
+                            <!-- ACTUALIZADO: Stats grid con datos reales -->
+                            <div class="stats-grid" id="stats-grid">
                                 <div class="stat-card" data-stat="clientes">
                                     <div class="stat-icon">👥</div>
                                     <div class="stat-info">
                                         <h3>Total Clientes</h3>
-                                        <span class="stat-number">156</span>
+                                        <span class="stat-number" id="total-clientes">Cargando...</span>
+                                        <p class="stat-description" id="desc-clientes">Usuarios registrados</p>
                                     </div>
                                 </div>
                                 <div class="stat-card" data-stat="citas-hoy">
                                     <div class="stat-icon">📅</div>
                                     <div class="stat-info">
                                         <h3>Citas Hoy</h3>
-                                        <span class="stat-number">8</span>
+                                        <span class="stat-number" id="citas-hoy-count">Cargando...</span>
+                                        <p class="stat-description" id="desc-citas">Citas programadas</p>
                                     </div>
                                 </div>
                                 <div class="stat-card" data-stat="ingresos">
                                     <div class="stat-icon">💰</div>
                                     <div class="stat-info">
                                         <h3>Ingresos del Mes</h3>
-                                        <span class="stat-number">$2,450,000</span>
+                                        <span class="stat-number" id="ingresos-mes">Cargando...</span>
+                                        <p class="stat-description" id="desc-ingresos">Pagos aprobados</p>
                                     </div>
                                 </div>
                                 <div class="stat-card" data-stat="satisfaccion">
                                     <div class="stat-icon">⭐</div>
                                     <div class="stat-info">
-                                        <h3>Satisfacción</h3>
-                                        <span class="stat-number">4.8/5</span>
+                                        <h3>Tasa de Asistencia</h3>
+                                        <span class="stat-number" id="satisfaccion">Cargando...</span>
+                                        <p class="stat-description">Citas completadas</p>
                                     </div>
                                 </div>
                             </div>
+                            
                             <div class="dashboard-widgets">
                                 <div class="widget">
                                     <h3>Citas de Hoy</h3>
-                                    <div class="citas-hoy-lista">
-                                        <div class="cita-mini">
-                                            <span class="hora">10:00</span>
-                                            <span class="cliente">Juan Pérez</span>
-                                            <span class="servicio">Psicoterapia Individual</span>
-                                        </div>
-                                        <div class="cita-mini">
-                                            <span class="hora">14:00</span>
-                                            <span class="cliente">María García</span>
-                                            <span class="servicio">Orientación Familiar</span>
-                                        </div>
+                                    <div class="citas-hoy-lista" id="citas-hoy-lista">
+                                        <div class="loading">Cargando citas...</div>
                                     </div>
                                 </div>
                                 <div class="widget">
                                     <h3>Pagos Pendientes</h3>
-                                    <div class="pagos-pendientes">
-                                        <div class="pago-pendiente">
-                                            <span class="cliente">Carlos López</span>
-                                            <span class="monto">$70.000</span>
-                                            <button class="btn-verificar" onclick="verificarPago(1)">Verificar</button>
-                                        </div>
+                                    <div class="pagos-pendientes" id="pagos-pendientes-widget">
+                                        <div class="loading">Cargando pagos...</div>
                                     </div>
                                 </div>
                             </div>
@@ -147,13 +160,15 @@
                             <div class="section-header">
                                 <h2>Gestionar Clientes</h2>
                                 <div class="header-actions">
-                                    <input type="text" placeholder="Buscar cliente..." class="search-input"
-                                        id="buscar-cliente">
+                                    <input type="text" placeholder="Buscar cliente..." class="search-input" id="buscar-cliente">
                                     <button class="btn-nuevo-cliente" onclick="nuevoCliente()">Nuevo Cliente</button>
+                                    <button class="btn-actualizar" onclick="cargarClientes()" style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div class="clientes-tabla">
-                                <table>
+                                <table class="tabla-admin">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -165,34 +180,9 @@
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="tabla-clientes-body">
                                         <tr>
-                                            <td>#001</td>
-                                            <td>Juan Pérez</td>
-                                            <td>juan.perez@email.com</td>
-                                            <td>+57 300 123 4567</td>
-                                            <td>4 créditos</td>
-                                            <td><span class="estado activo">Activo</span></td>
-                                            <td>
-                                                <button class="btn-editar" onclick="editarCliente(1)">Editar</button>
-                                                <button class="btn-ver" onclick="verCliente(1)">Ver</button>
-                                                <button class="btn-suspender"
-                                                    onclick="suspenderCliente(1)">Suspender</button>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>#002</td>
-                                            <td>María García</td>
-                                            <td>maria.garcia@email.com</td>
-                                            <td>+57 301 234 5678</td>
-                                            <td>2 créditos</td>
-                                            <td><span class="estado activo">Activo</span></td>
-                                            <td>
-                                                <button class="btn-editar" onclick="editarCliente(2)">Editar</button>
-                                                <button class="btn-ver" onclick="verCliente(2)">Ver</button>
-                                                <button class="btn-suspender"
-                                                    onclick="suspenderCliente(2)">Suspender</button>
-                                            </td>
+                                            <td colspan="7" class="loading">Cargando clientes...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -210,8 +200,32 @@
                                         <option value="mes">Este Mes</option>
                                     </select>
                                     <button class="btn-nueva-cita-admin" onclick="nuevaCitaAdmin()">Nueva Cita</button>
+                                    <button class="btn-actualizar" onclick="cargarCitasAdmin()" style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
                                 </div>
                             </div>
+                            
+                            <!-- NUEVO: Resumen de citas -->
+                            <div class="citas-resumen" id="citas-resumen">
+                                <div class="resumen-card">
+                                    <h4>Total Citas</h4>
+                                    <span id="total-citas-periodo">0</span>
+                                </div>
+                                <div class="resumen-card">
+                                    <h4>Confirmadas</h4>
+                                    <span id="citas-confirmadas">0</span>
+                                </div>
+                                <div class="resumen-card">
+                                    <h4>Completadas</h4>
+                                    <span id="citas-completadas">0</span>
+                                </div>
+                                <div class="resumen-card">
+                                    <h4>Canceladas</h4>
+                                    <span id="citas-canceladas">0</span>
+                                </div>
+                            </div>
+
                             <div class="calendario-admin">
                                 <div class="calendario-header">
                                     <button onclick="mesAnterior()">&lt;</button>
@@ -222,24 +236,11 @@
                                     <!-- Se genera dinámicamente -->
                                 </div>
                             </div>
+                            
                             <div class="citas-lista-admin">
-                                <h3>Citas del Día Seleccionado</h3>
-                                <div id="citas-del-dia">
-                                    <div class="cita-admin-card">
-                                        <div class="cita-hora">10:00 AM</div>
-                                        <div class="cita-detalles">
-                                            <h4>Juan Pérez</h4>
-                                            <p>Psicoterapia Individual - Virtual</p>
-                                            <p>+57 300 123 4567</p>
-                                        </div>
-                                        <div class="cita-acciones-admin">
-                                            <button class="btn-confirmar" onclick="confirmarCita(1)">Confirmar</button>
-                                            <button class="btn-reprogramar"
-                                                onclick="reprogramarCitaAdmin(1)">Reprogramar</button>
-                                            <button class="btn-cancelar"
-                                                onclick="cancelarCitaAdmin(1)">Cancelar</button>
-                                        </div>
-                                    </div>
+                                <h3>Citas del Período Seleccionado</h3>
+                                <div id="citas-del-periodo">
+                                    <div class="loading">Selecciona un período para ver las citas</div>
                                 </div>
                             </div>
                         </div>
@@ -255,10 +256,34 @@
                                         <option value="aprobado">Aprobados</option>
                                         <option value="rechazado">Rechazados</option>
                                     </select>
+                                    <button class="btn-actualizar" onclick="cargarPagosAdmin()" style="margin-left: 10px; padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
                                 </div>
                             </div>
+                            
+                            <!-- NUEVO: Resumen de pagos -->
+                            <div class="pagos-resumen" id="pagos-resumen">
+                                <div class="resumen-card">
+                                    <h4>Total Pagos</h4>
+                                    <span id="total-pagos">0</span>
+                                </div>
+                                <div class="resumen-card">
+                                    <h4>Pendientes</h4>
+                                    <span id="pagos-pendientes-count">0</span>
+                                </div>
+                                <div class="resumen-card">
+                                    <h4>Aprobados</h4>
+                                    <span id="pagos-aprobados-count">0</span>
+                                </div>
+                                <div class="resumen-card">
+                                    <h4>Monto Total</h4>
+                                    <span id="monto-total-pagos">$0</span>
+                                </div>
+                            </div>
+
                             <div class="pagos-admin-tabla">
-                                <table>
+                                <table class="tabla-admin">
                                     <thead>
                                         <tr>
                                             <th>ID</th>
@@ -271,57 +296,99 @@
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="tabla-pagos-body">
                                         <tr>
-                                            <td>#P001</td>
-                                            <td>Juan Pérez</td>
-                                            <td>Paquete 4 Sesiones</td>
-                                            <td>QR</td>
-                                            <td>$260.000</td>
-                                            <td>20/05/2025</td>
-                                            <td><span class="estado pendiente">Pendiente</span></td>
-                                            <td>
-                                                <button class="btn-aprobar" onclick="aprobarPago(1)">Aprobar</button>
-                                                <button class="btn-rechazar" onclick="rechazarPago(1)">Rechazar</button>
-                                                <button class="btn-ver-comprobante" onclick="verComprobante(1)">Ver
-                                                    Comprobante</button>
-                                            </td>
+                                            <td colspan="8" class="loading">Cargando pagos...</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- Reportes -->
+                        <!-- ACTUALIZADO: Reportes con gráficos reales -->
                         <div id="reportes" class="content-section">
                             <div class="section-header">
-                                <h2>Reportes</h2>
+                                <h2>Reportes y Análisis</h2>
                                 <div class="header-actions">
                                     <select id="periodo-reporte">
                                         <option value="mes">Este Mes</option>
                                         <option value="trimestre">Este Trimestre</option>
+                                        <option value="semestre">Este Semestre</option>
                                         <option value="año">Este Año</option>
                                     </select>
-                                    <button class="btn-exportar" onclick="exportarReporte()">Exportar PDF</button>
+                                    <button onclick="generarReportePDF()" class="btn-exportar">
+                                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                                    </button>
+                                    <button onclick="cargarReportes()" class="btn-actualizar">
+                                        <i class="fas fa-sync-alt"></i> Actualizar
+                                    </button>
                                 </div>
                             </div>
+                            
+                            <!-- NUEVO: Métricas de reportes -->
+                            <div class="reportes-metricas" id="reportes-metricas">
+                                <div class="metrica-card">
+                                    <h4>Ingresos Totales</h4>
+                                    <span id="ingresos-totales-reporte">$0</span>
+                                    <small id="variacion-ingresos">+0%</small>
+                                </div>
+                                <div class="metrica-card">
+                                    <h4>Clientes Nuevos</h4>
+                                    <span id="clientes-nuevos-reporte">0</span>
+                                    <small id="variacion-clientes">+0%</small>
+                                </div>
+                                <div class="metrica-card">
+                                    <h4>Citas Realizadas</h4>
+                                    <span id="citas-realizadas-reporte">0</span>
+                                    <small id="variacion-citas">+0%</small>
+                                </div>
+                                <div class="metrica-card">
+                                    <h4>Tasa de Conversión</h4>
+                                    <span id="tasa-conversion-reporte">0%</span>
+                                    <small id="variacion-conversion">+0%</small>
+                                </div>
+                            </div>
+
                             <div class="reportes-grid">
                                 <div class="reporte-card">
-                                    <h3>Ingresos por Servicio</h3>
-                                    <div class="chart-placeholder">
-                                        <p>Gráfico de ingresos por tipo de servicio</p>
+                                    <h3>Ingresos por Mes</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartIngresosMes" width="400" height="200"></canvas>
                                     </div>
                                 </div>
+                                
                                 <div class="reporte-card">
-                                    <h3>Citas por Mes</h3>
-                                    <div class="chart-placeholder">
-                                        <p>Gráfico de citas realizadas por mes</p>
+                                    <h3>Servicios Más Solicitados</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartServiciosPopulares" width="400" height="200"></canvas>
                                     </div>
                                 </div>
+                                
                                 <div class="reporte-card">
-                                    <h3>Clientes Nuevos</h3>
-                                    <div class="chart-placeholder">
-                                        <p>Gráfico de adquisición de clientes</p>
+                                    <h3>Citas por Estado</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartEstadoCitas" width="400" height="200"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <div class="reporte-card">
+                                    <h3>Crecimiento de Clientes</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartCrecimientoClientes" width="400" height="200"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <div class="reporte-card">
+                                    <h3>Modalidad de Citas</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartModalidadCitas" width="400" height="200"></canvas>
+                                    </div>
+                                </div>
+                                
+                                <div class="reporte-card">
+                                    <h3>Horarios Más Solicitados</h3>
+                                    <div class="chart-container">
+                                        <canvas id="chartHorariosCitas" width="400" height="200"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -335,66 +402,74 @@
                             <div class="config-admin-grid">
                                 <div class="config-admin-card">
                                     <h3>Horarios de Atención</h3>
-                                    <form id="form-horarios">
+                                    <form id="form-horarios" onsubmit="guardarHorarios(event)">
                                         <div class="horario-dia">
                                             <label>Lunes:</label>
-                                            <input type="time" value="08:00"> - <input type="time" value="17:00">
+                                            <input type="time" name="lunes_inicio" value="08:00"> - 
+                                            <input type="time" name="lunes_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Martes:</label>
-                                            <input type="time" value="08:00"> - <input type="time" value="17:00">
+                                            <input type="time" name="martes_inicio" value="08:00"> - 
+                                            <input type="time" name="martes_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Miércoles:</label>
-                                            <input type="time" value="08:00"> - <input type="time" value="17:00">
+                                            <input type="time" name="miercoles_inicio" value="08:00"> - 
+                                            <input type="time" name="miercoles_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Jueves:</label>
-                                            <input type="time" value="08:00"> - <input type="time" value="17:00">
+                                            <input type="time" name="jueves_inicio" value="08:00"> - 
+                                            <input type="time" name="jueves_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Viernes:</label>
-                                            <input type="time" value="08:00"> - <input type="time" value="17:00">
+                                            <input type="time" name="viernes_inicio" value="08:00"> - 
+                                            <input type="time" name="viernes_fin" value="17:00">
                                         </div>
                                         <div class="horario-dia">
                                             <label>Sábado:</label>
-                                            <input type="time" value="08:00"> - <input type="time" value="12:00">
+                                            <input type="time" name="sabado_inicio" value="08:00"> - 
+                                            <input type="time" name="sabado_fin" value="12:00">
                                         </div>
                                         <button type="submit">Guardar Horarios</button>
                                     </form>
                                 </div>
+                                
                                 <div class="config-admin-card">
                                     <h3>Precios de Servicios</h3>
-                                    <form id="form-precios">
+                                    <form id="form-precios" onsubmit="actualizarPrecios(event)">
                                         <div class="precio-servicio">
                                             <label>Psicoterapia Individual:</label>
-                                            <input type="number" value="70000" min="0">
+                                            <input type="number" name="psicoterapia_individual" value="70000" min="0">
                                         </div>
                                         <div class="precio-servicio">
                                             <label>Orientación Familiar:</label>
-                                            <input type="number" value="110000" min="0">
+                                            <input type="number" name="orientacion_familiar" value="110000" min="0">
                                         </div>
                                         <div class="precio-servicio">
                                             <label>Valoración Psicológica:</label>
-                                            <input type="number" value="100000" min="0">
+                                            <input type="number" name="valoracion_psicologica" value="100000" min="0">
                                         </div>
                                         <div class="precio-servicio">
                                             <label>Psicoterapia de Pareja:</label>
-                                            <input type="number" value="100000" min="0">
+                                            <input type="number" name="psicoterapia_pareja" value="100000" min="0">
                                         </div>
                                         <button type="submit">Actualizar Precios</button>
                                     </form>
                                 </div>
+                                
                                 <div class="config-admin-card">
                                     <h3>Información de Pago QR</h3>
-                                    <form id="form-qr">
+                                    <form id="form-qr" onsubmit="actualizarQR(event)">
                                         <div class="form-group">
                                             <label>Imagen QR Actual:</label>
-                                            <img src="recursos/qr-pago-creser.png" alt="QR Actual" class="qr-preview">
+                                            <img src="recursos/qr.jpg" alt="QR Actual" class="qr-preview" id="qr-preview" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJ3aGl0ZSIvPgo8dGV4dCB4PSIxMDAiIHk9IjEwMCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJibGFjayIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UVIgQ3JlU2VyPC90ZXh0Pgo8L3N2Zz4='">
                                         </div>
                                         <div class="form-group">
                                             <label>Cambiar QR:</label>
-                                            <input type="file" accept="image/*">
+                                            <input type="file" name="qr_image" accept="image/*">
                                         </div>
                                         <button type="submit">Actualizar QR</button>
                                     </form>
@@ -410,7 +485,7 @@
     <div class="footer-full-width">
         <div class="footer-content">
             <div class="footer-info">
-                <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer">
+                <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer" onerror="this.style.display='none'">
                 <h3>Ubicación</h3>
                 <p>Calle Principal #123, Ibagué, Colombia</p>
                 <h4>Síguenos</h4>
@@ -419,16 +494,17 @@
                     <a href="#"><i class="fab fa-instagram"></i></a>
                     <a href="#"><i class="fab fa-whatsapp"></i></a>
                 </div>
-                <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a>
-                </p>
+                <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a></p>
             </div>
         </div>
     </div>
 
-    <!-- Scripts en el orden correcto 
-    <script src="js/auth.js"></script> -->
+    <!-- Scripts -->
     <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/perfil-admin.js"></script>
+    
+    
 </body>
 
 </html>

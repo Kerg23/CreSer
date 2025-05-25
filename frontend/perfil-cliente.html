@@ -23,7 +23,7 @@
                 <a href="comprar.html">Comprar</a>
                 <a href="noticias.html">Noticias</a>
                 <div class="boton-acceder">
-                    <a href="#" onclick="cerrarSesion()">Cerrar Sesión</a>
+                    <a href="#" id="btn-cerrar-sesion">Cerrar Sesión</a>
                 </div>
             </nav>
         </div>
@@ -44,28 +44,28 @@
                     <div class="perfil-sidebar">
                         <div class="perfil-avatar">
                             <img src="recursos/avatar-default.png" alt="Avatar" id="avatar-usuario">
-                            <button class="btn-cambiar-avatar" onclick="cambiarAvatar()">Cambiar Foto</button>
+                            <button class="btn-cambiar-avatar" id="btn-cambiar-avatar">Cambiar Foto</button>
                             <input type="file" id="input-avatar" accept="image/*" style="display: none;">
                         </div>
                         <div class="perfil-info-basica">
-                            <h3 id="nombre-usuario">Juan Pérez</h3>
-                            <p id="email-usuario">juan.perez@email.com</p>
+                            <h3 id="nombre-usuario">Cargando...</h3>
+                            <p id="email-usuario">Cargando...</p>
                             <span class="badge-cliente">Cliente</span>
                         </div>
                         <nav class="perfil-nav">
-                            <a href="#" class="nav-item active" onclick="mostrarSeccion('informacion-personal')">
+                            <a href="#" class="nav-item active" data-section="informacion-personal">
                                 <i class="icon-user"></i> Información Personal
                             </a>
-                            <a href="#" class="nav-item" onclick="mostrarSeccion('mis-creditos')">
+                            <a href="#" class="nav-item" data-section="mis-creditos">
                                 <i class="icon-credit"></i> Mis Créditos
                             </a>
-                            <a href="#" class="nav-item" onclick="mostrarSeccion('mis-citas')">
+                            <a href="#" class="nav-item" data-section="mis-citas">
                                 <i class="icon-calendar"></i> Mis Citas
                             </a>
-                            <a href="#" class="nav-item" onclick="mostrarSeccion('historial-pagos')">
+                            <a href="#" class="nav-item" data-section="historial-pagos">
                                 <i class="icon-payment"></i> Historial de Pagos
                             </a>
-                            <a href="#" class="nav-item" onclick="mostrarSeccion('configuracion')">
+                            <a href="#" class="nav-item" data-section="configuracion">
                                 <i class="icon-settings"></i> Configuración
                             </a>
                         </nav>
@@ -77,52 +77,32 @@
                         <div id="informacion-personal" class="content-section active">
                             <div class="section-header">
                                 <h2>Información Personal</h2>
-                                <button class="btn-editar" onclick="habilitarEdicion()">Editar</button>
+                                <button id="btn-editar-info" class="btn-editar">Editar</button>
                             </div>
                             <form id="form-info-personal" class="perfil-form">
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="nombre">Nombre completo:</label>
-                                        <input type="text" id="nombre" value="Juan Pérez" readonly>
+                                        <input type="text" id="nombre" name="nombre" value="" disabled>
                                     </div>
                                     <div class="form-group">
                                         <label for="email">Correo electrónico:</label>
-                                        <input type="email" id="email" value="juan.perez@email.com" readonly>
+                                        <input type="email" id="email" name="email" value="" disabled readonly>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="telefono">Teléfono:</label>
-                                        <input type="tel" id="telefono" value="+57 300 123 4567" readonly>
+                                        <input type="tel" id="telefono" name="telefono" value="" disabled>
                                     </div>
                                     <div class="form-group">
                                         <label for="documento">Documento:</label>
-                                        <input type="text" id="documento" value="12345678" readonly>
+                                        <input type="text" id="documento" name="documento" value="" disabled>
                                     </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="fecha-nacimiento">Fecha de nacimiento:</label>
-                                        <input type="date" id="fecha-nacimiento" value="1990-01-15" readonly>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="genero">Género:</label>
-                                        <select id="genero" disabled>
-                                            <option value="masculino" selected>Masculino</option>
-                                            <option value="femenino">Femenino</option>
-                                            <option value="otro">Otro</option>
-                                            <option value="no-especificar">Prefiero no especificar</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="direccion">Dirección:</label>
-                                    <input type="text" id="direccion" value="Calle 123 #45-67, Ibagué" readonly>
                                 </div>
                                 <div class="form-actions" id="form-actions" style="display: none;">
-                                    <button type="button" class="btn-cancelar"
-                                        onclick="cancelarEdicion()">Cancelar</button>
-                                    <button type="submit" class="btn-guardar">Guardar Cambios</button>
+                                    <button type="button" id="btn-cancelar-info" class="btn-cancelar">Cancelar</button>
+                                    <button type="submit" id="btn-guardar-info" class="btn-guardar">Guardar Cambios</button>
                                 </div>
                             </form>
                         </div>
@@ -134,31 +114,8 @@
                                 <a href="comprar.html" class="btn-comprar-creditos">Comprar Más Créditos</a>
                             </div>
                             <div class="creditos-grid">
-                                <div class="credito-card">
-                                    <div class="credito-header">
-                                        <h3>Psicoterapia Individual</h3>
-                                        <span class="creditos-disponibles">3 créditos</span>
-                                    </div>
-                                    <p>Válido para sesiones de 60 minutos</p>
-                                    <button class="btn-usar-credito"
-                                        onclick="agendarCita('psicoterapia-individual')">Agendar Cita</button>
-                                </div>
-                                <div class="credito-card">
-                                    <div class="credito-header">
-                                        <h3>Orientación Familiar</h3>
-                                        <span class="creditos-disponibles">1 crédito</span>
-                                    </div>
-                                    <p>Válido para sesiones de 90 minutos</p>
-                                    <button class="btn-usar-credito"
-                                        onclick="agendarCita('orientacion-familiar')">Agendar Cita</button>
-                                </div>
-                                <div class="credito-card sin-creditos">
-                                    <div class="credito-header">
-                                        <h3>Evaluación Psicológica</h3>
-                                        <span class="creditos-disponibles">0 créditos</span>
-                                    </div>
-                                    <p>No tienes créditos disponibles</p>
-                                    <a href="comprar.html" class="btn-comprar">Comprar Créditos</a>
+                                <div class="loading-placeholder">
+                                    <p>Cargando tus créditos...</p>
                                 </div>
                             </div>
                         </div>
@@ -167,49 +124,22 @@
                         <div id="mis-citas" class="content-section">
                             <div class="section-header">
                                 <h2>Mis Citas</h2>
-                                <a href="agendar-cita.html" class="btn-nueva-cita">Nueva Cita</a>
+                                <button id="btn-nueva-cita" class="btn-nueva-cita">Nueva Cita</button>
                             </div>
                             <div class="citas-tabs">
-                                <button class="tab-btn active" onclick="filtrarCitas('proximas')">Próximas</button>
-                                <button class="tab-btn" onclick="filtrarCitas('pasadas')">Pasadas</button>
-                                <button class="tab-btn" onclick="filtrarCitas('canceladas')">Canceladas</button>
+                                <button id="tab-proximas" class="tab-citas active" data-tipo="proximas">
+                                    Próximas <span class="counter">0</span>
+                                </button>
+                                <button id="tab-pasadas" class="tab-citas" data-tipo="pasadas">
+                                    Pasadas <span class="counter">0</span>
+                                </button>
+                                <button id="tab-canceladas" class="tab-citas" data-tipo="canceladas">
+                                    Canceladas <span class="counter">0</span>
+                                </button>
                             </div>
                             <div class="citas-lista">
-                                <div class="cita-card proximas">
-                                    <div class="cita-fecha">
-                                        <span class="dia">25</span>
-                                        <span class="mes">May</span>
-                                    </div>
-                                    <div class="cita-info">
-                                        <h4>Psicoterapia Individual</h4>
-                                        <p><strong>Fecha:</strong> 25 de Mayo, 2025</p>
-                                        <p><strong>Hora:</strong> 10:00 AM</p>
-                                        <p><strong>Modalidad:</strong> Virtual</p>
-                                        <p><strong>Psicóloga:</strong> Diana Milena Rodríguez</p>
-                                    </div>
-                                    <div class="cita-acciones">
-                                        <button class="btn-reprogramar"
-                                            onclick="reprogramarCita(1)">Reprogramar</button>
-                                        <button class="btn-cancelar-cita" onclick="cancelarCita(1)">Cancelar</button>
-                                    </div>
-                                </div>
-                                <div class="cita-card pasadas" style="display: none;">
-                                    <div class="cita-fecha">
-                                        <span class="dia">15</span>
-                                        <span class="mes">May</span>
-                                    </div>
-                                    <div class="cita-info">
-                                        <h4>Orientación Familiar</h4>
-                                        <p><strong>Fecha:</strong> 15 de Mayo, 2025</p>
-                                        <p><strong>Hora:</strong> 2:00 PM</p>
-                                        <p><strong>Modalidad:</strong> Presencial</p>
-                                        <p><strong>Estado:</strong> <span class="estado completada">Completada</span>
-                                        </p>
-                                    </div>
-                                    <div class="cita-acciones">
-                                        <button class="btn-descargar" onclick="descargarComprobante(2)">Descargar
-                                            Comprobante</button>
-                                    </div>
+                                <div class="loading-placeholder">
+                                    <p>Cargando tus citas...</p>
                                 </div>
                             </div>
                         </div>
@@ -220,7 +150,7 @@
                                 <h2>Historial de Pagos</h2>
                             </div>
                             <div class="pagos-tabla">
-                                <table>
+                                <table id="tabla-pagos">
                                     <thead>
                                         <tr>
                                             <th>Fecha</th>
@@ -233,22 +163,7 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td>20/05/2025</td>
-                                            <td>Paquete Psicoterapia 4 Sesiones</td>
-                                            <td>Tarjeta</td>
-                                            <td>$260.000</td>
-                                            <td><span class="estado aprobado">Aprobado</span></td>
-                                            <td><button class="btn-ver-detalle" onclick="verDetallePago(1)">Ver
-                                                    Detalle</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td>10/05/2025</td>
-                                            <td>Orientación Familiar</td>
-                                            <td>QR</td>
-                                            <td>$110.000</td>
-                                            <td><span class="estado aprobado">Aprobado</span></td>
-                                            <td><button class="btn-ver-detalle" onclick="verDetallePago(2)">Ver
-                                                    Detalle</button></td>
+                                            <td colspan="6" style="text-align: center;">Cargando historial de pagos...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -266,15 +181,15 @@
                                     <form id="form-cambiar-password">
                                         <div class="form-group">
                                             <label for="password-actual">Contraseña actual:</label>
-                                            <input type="password" id="password-actual" required>
+                                            <input type="password" id="password-actual" name="password-actual" required>
                                         </div>
                                         <div class="form-group">
                                             <label for="password-nueva">Nueva contraseña:</label>
-                                            <input type="password" id="password-nueva" required>
+                                            <input type="password" id="password-nueva" name="password-nueva" required>
                                         </div>
                                         <div class="form-group">
                                             <label for="password-confirmar">Confirmar nueva contraseña:</label>
-                                            <input type="password" id="password-confirmar" required>
+                                            <input type="password" id="password-confirmar" name="password-confirmar" required>
                                         </div>
                                         <button type="submit" class="btn-cambiar-password">Cambiar Contraseña</button>
                                     </form>
@@ -301,10 +216,8 @@
                                 </div>
                                 <div class="config-card peligro">
                                     <h3>Eliminar Cuenta</h3>
-                                    <p>Esta acción no se puede deshacer. Se eliminarán todos tus datos permanentemente.
-                                    </p>
-                                    <button class="btn-eliminar-cuenta" onclick="confirmarEliminacion()">Eliminar Mi
-                                        Cuenta</button>
+                                    <p>Esta acción no se puede deshacer. Se eliminarán todos tus datos permanentemente.</p>
+                                    <button class="btn-eliminar-cuenta" id="btn-eliminar-cuenta">Eliminar Mi Cuenta</button>
                                 </div>
                             </div>
                         </div>
@@ -314,7 +227,6 @@
         </section>
     </main>
 
-    
     <div class="footer-full-width">
         <div class="footer-content">
             <div class="footer-info">
@@ -327,13 +239,13 @@
                     <a href="#"><i class="fab fa-instagram"></i></a>
                     <a href="#"><i class="fab fa-whatsapp"></i></a>
                 </div>
-                <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a>
-                </p>
+                <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a></p>
             </div>
         </div>
     </div>
 
-
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
     <script src="js/perfil-cliente.js"></script>
 </body>
 
