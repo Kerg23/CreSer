@@ -1,0 +1,280 @@
+@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+body {
+    font-family: 'Montserrat';
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #FCEFEF;  /*#1d6d5d*/   /*#e0f5ef*/
+    padding: 15px 30px;
+    color: white;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.navbar .boton-acceder{
+    margin-left: auto;
+    height: 100%; 
+    align-self: center; 
+}
+
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap:2px;
+}
+
+
+#logo1{
+    height: 60px;
+}
+
+#logo2{
+    width: 150px;
+    height: auto;
+}
+
+
+.menu {
+    display: flex;
+    gap: 20px;
+}
+
+.menu a {
+    color: #333333;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 5px 0;
+    border-bottom: 2px solid transparent;
+    transition: color 0.3s, border-color 0.3s;
+}
+
+.menu a:hover {
+    color: #ffd84d;
+    border-color: #ffd84d;
+}
+
+
+.boton-acceder a {
+    background-color: #ffd84d;
+    color: #333333;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.3s;
+    display: inline-block;
+}
+
+.boton-acceder a:hover {
+    background-color: #ffc107;
+    color: white;
+}
+
+
+
+@media (max-width: 1024px) {
+    .navbar {
+        flex-wrap: wrap;
+    }
+
+    .menu {
+        margin-top: 20px;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+  
+}
+
+@media (max-width: 600px) {
+    .navbar {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .menu {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    
+}
+
+/* ============ ESTILOS PARA HEADER ADAPTATIVO ============ */
+
+.user-menu {
+    position: relative;
+    display: inline-block;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: rgba(78, 195, 177, 0.1);
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.user-info:hover {
+    background: rgba(78, 195, 177, 0.2);
+    border-color: #4EC3B1;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #4EC3B1;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #333;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-info i {
+    color: #4EC3B1;
+    font-size: 12px;
+    transition: transform 0.3s ease;
+}
+
+.user-menu:hover .user-info i {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    margin-top: 5px;
+}
+
+.dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    color: #333;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item.active {
+    background-color: rgba(78, 195, 177, 0.1);
+    color: #4EC3B1;
+    font-weight: 600;
+}
+
+.dropdown-item.logout {
+    color: #dc3545;
+    border-bottom: none;
+}
+
+.dropdown-item.logout:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 8px 0;
+}
+
+.dropdown-item i {
+    width: 16px;
+    text-align: center;
+}
+
+.btn-acceder {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #4EC3B1, #15846B);
+    color: white;
+    text-decoration: none;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-acceder:hover {
+    background: linear-gradient(135deg, #45b8a6, #13735c);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(78, 195, 177, 0.3);
+}
+
+/* ============ RESPONSIVE PARA HEADER ============ */
+
+@media (max-width: 768px) {
+    .user-name {
+        display: none;
+    }
+    
+    .user-info {
+        padding: 6px 8px;
+    }
+    
+    .dropdown-menu {
+        min-width: 180px;
+        right: -10px;
+    }
+    
+    .btn-acceder {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dropdown-menu {
+        position: fixed;
+        top: 60px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        min-width: auto;
+    }
+}

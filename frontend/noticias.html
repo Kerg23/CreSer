@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noticias - CreSer</title>
+    <link rel="stylesheet" href="css/estilos-noticias.css">
+    <link rel="stylesheet" href="css/estilos-navbar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+   <header>
+        <div class="navbar">
+            <div class="logo">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
+            </div>
+            <nav class="menu">
+                <a href="index.html" class="activo">Inicio</a>
+                <a href="servicios.html">Servicios</a>
+                <a href="comprar.html">Comprar</a>
+                <a href="noticias.html">Noticias</a>
+                
+                <!-- NAVEGACIÓN ADAPTATIVA -->
+                <div id="nav-auth-container">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="boton-acceder">
+                        <a href="acceder.html">
+                            <i class="fas fa-sign-in-alt"></i> Acceder
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="titulo-principal">
+            <h1>Noticias y Actualizaciones</h1>
+            <div class="subtitulo">
+                <p>Mantente informado sobre CreSer</p>
+                <p>Centro Terapéutico</p>
+            </div>
+        </section>
+
+        <section class="descripcion-noticias">
+            <div class="container">
+                <p class="texto-descripcion">
+                    Aquí encontrarás información actualizada sobre nuestro centro terapéutico CreSer y diversos temas de interés para tu bienestar y crecimiento personal. ¡Mantente conectado!
+                </p>
+            </div>
+        </section>
+
+        <!-- Panel de Administrador -->
+        <section class="admin-panel" id="admin-panel" style="display: none;">
+            <div class="container">
+                <div class="panel-header">
+                    <h2><i class="fas fa-user-shield"></i> Panel de Administrador</h2>
+                    <button class="btn-nueva-noticia" id="btn-nueva-noticia">
+                        <i class="fas fa-plus"></i> Nueva Noticia
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Formulario para Nueva Noticia -->
+        <section class="formulario-noticia" id="formulario-noticia" style="display: none;">
+            <div class="container">
+                <div class="form-card">
+                    <h3><i class="fas fa-newspaper"></i> Crear Nueva Noticia</h3>
+                    <form id="form-noticia">
+                        <div class="form-group">
+                            <label for="titulo-noticia">
+                                <i class="fas fa-heading"></i> Título de la noticia:
+                            </label>
+                            <input type="text" id="titulo-noticia" placeholder="Escribe el título de la noticia" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="imagen-noticia">
+                                <i class="fas fa-image"></i> Imagen de la noticia:
+                            </label>
+                            <input type="file" id="imagen-noticia" accept="image/*">
+                            <small class="file-help">Formatos aceptados: JPG, PNG. Tamaño máximo: 5MB</small>
+                        </div>
+                        
+                        <div class="preview-imagen" id="preview-imagen" style="display: none;">
+                            <p>Vista previa:</p>
+                            <img id="preview-img" src="" alt="Vista previa" style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="contenido-noticia">
+                                <i class="fas fa-edit"></i> Contenido de la noticia:
+                            </label>
+                            <textarea id="contenido-noticia" placeholder="Escribe el contenido completo de la noticia" rows="8" required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="fecha-noticia">
+                                <i class="fas fa-calendar"></i> Fecha de publicación:
+                            </label>
+                            <input type="date" id="fecha-noticia" required>
+                        </div>
+                        
+                        <div class="form-buttons">
+                            <button type="button" class="btn-cancelar" id="btn-cancelar-noticia">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button type="submit" class="btn-publicar">
+                                <i class="fas fa-paper-plane"></i> Publicar Noticia
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sección de Noticias -->
+        <section class="noticias-grid">
+            <div class="container">
+                <!-- Noticia 1 -->
+                <article class="noticia-card" data-id="1">
+                    <div class="noticia-imagen">
+                        <img src="recursos/feria_virtual.jpg" alt="Feria Virtual de salud mental">
+                    </div>
+                    <div class="noticia-contenido">
+                        <div class="noticia-meta">
+                            <span class="fecha-noticia">
+                                <i class="fas fa-calendar-alt"></i> 12 de abril, 2025
+                            </span>
+                            <span class="autor-noticia">
+                                <i class="fas fa-user"></i> Diana Milena Rodríguez
+                            </span>
+                        </div>
+                        <h2>Feria Virtual de salud mental</h2>
+                        <p>El pasado 12 de abril se llevó a cabo una feria virtual de salud mental enfocada en el bienestar de las familias. El evento ofreció charlas, talleres y recursos gratuitos para promover una mejor salud emocional en el hogar.</p>
+                        <div class="noticia-acciones">
+                            <button class="btn-leer-mas" data-id="1">
+                                <i class="fas fa-book-open"></i> Leer más
+                            </button>
+                            <div class="admin-acciones" style="display: none;">
+                                <button class="btn-editar-noticia" data-id="1">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn-eliminar-noticia" data-id="1">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Noticia 2 -->
+                <article class="noticia-card" data-id="2">
+                    <div class="noticia-imagen">
+                        <img src="recursos/logo1.png" alt="Hemos Vuelto">
+                    </div>
+                    <div class="noticia-contenido">
+                        <div class="noticia-meta">
+                            <span class="fecha-noticia">
+                                <i class="fas fa-calendar-alt"></i> 15 de marzo, 2025
+                            </span>
+                            <span class="autor-noticia">
+                                <i class="fas fa-user"></i> Diana Milena Rodríguez
+                            </span>
+                        </div>
+                        <h2>¡Hemos Vuelto!</h2>
+                        <p>¡Hemos vuelto! El centro terapéutico CreSer reabrió sus puertas con renovadas energías y el mismo compromiso de siempre. Te esperamos para seguir acompañándote en tu camino de crecimiento y bienestar.</p>
+                        <div class="noticia-acciones">
+                            <button class="btn-leer-mas" data-id="2">
+                                <i class="fas fa-book-open"></i> Leer más
+                            </button>
+                            <div class="admin-acciones" style="display: none;">
+                                <button class="btn-editar-noticia" data-id="2">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn-eliminar-noticia" data-id="2">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Contenedor para noticias dinámicas -->
+                <div id="noticias-dinamicas"></div>
+            </div>
+        </section>
+
+        <!-- Información adicional -->
+        <section class="info-adicional">
+            <div class="container">
+                <div class="beneficios">
+                    <div class="beneficio-item">
+                        <span class="icono"><i class="fas fa-newspaper"></i></span>
+                        <p>Noticias actualizadas regularmente</p>
+                    </div>
+                    <div class="beneficio-item">
+                        <span class="icono"><i class="fas fa-lightbulb"></i></span>
+                        <p>Consejos de bienestar y salud mental</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Llamado a la acción -->
+        <section class="cta-seccion">
+            <div class="container">
+                <div class="cta-container">
+                    <h2>¿Quieres recibir nuestras noticias?</h2>
+                    <p>Suscríbete para estar al día con todas nuestras actualizaciones</p>
+                    <a href="contacto.html" class="btn-agendar">
+                        <i class="fas fa-envelope"></i> Suscribirse
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Div para mensajes -->
+    <div id="mensajes-container"></div>
+
+    <footer class="footer">
+        <div class="footer-info">
+            <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer">
+            <h3>Ubicación</h3>
+            <p>Calle Principal #123, Ibagué, Colombia</p>
+            <h4>Síguenos</h4>
+            <div class="social-icons">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-whatsapp"></i></a>
+            </div>
+            <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a></p>
+        </div>
+
+        <div class="footer-form">
+            <h3>Contáctanos</h3>
+            <form >
+                <input type="text" placeholder="Nombre" required>
+                <input type="tel" placeholder="Teléfono" required>
+                <input type="email" placeholder="Correo electrónico" required>
+                <textarea placeholder="Mensaje" rows="3" required></textarea>
+                <button type="submit">
+                    <i class="fas fa-paper-plane"></i> Enviar
+                </button>
+            </form>
+        </div>
+    </footer>
+
+    <script src="js/noticias.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="/frontend/js/header-adaptativo.js"></script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/estilos-inicio.css">
+    <link rel="stylesheet" href="css/estilos-navbar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <title>CreSer</title>
+</head>
+
+<body>
+
+    <!-- HEADER ADAPTATIVO ACTUALIZADO -->
+    <header>
+        <div class="navbar">
+            <div class="logo">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
+            </div>
+            <nav class="menu">
+                <a href="index.html" class="activo">Inicio</a>
+                <a href="servicios.html">Servicios</a>
+                <a href="comprar.html">Comprar</a>
+                <a href="noticias.html">Noticias</a>
+                
+                <!-- NAVEGACIÓN ADAPTATIVA -->
+                <div id="nav-auth-container">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="boton-acceder">
+                        <a href="acceder.html">
+                            <i class="fas fa-sign-in-alt"></i> Acceder
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <section class="primer-contenido">
+        <div class="contenido-incio">
+            <div class="parrafo-introduccion">
+                <img src="Recursos/logo2.png" alt="CreSer Logo2" id="logo-contenido" onerror="this.style.display='none'">
+                <p class="texto">
+                    CreSer es un centro Terapéutico especializado en atención integral en salud mental y desarrollo
+                    personal,
+                    trabajamos desde el modelo cognitivo conductual haciendo uso de estrategias validadas
+                    científicamente
+                    garantizando así el cumplimiento de los objetivos.
+                </p>
+            </div>
+            <div>
+                <img src="Recursos/logo1.png" id="logo1-2" onerror="this.style.display='none'">
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h1>Introducción</h1>
+        <div class="introduccion-container">
+            <img src="Recursos/psicologa.jpg" alt="Psicóloga Diana Milena" id="psicologa-img" onerror="this.style.display='none'">
+
+            <div class="perfil-profesional">
+                <p> DIANA MILENA es psicóloga egresada de la Universidad de Ibagué y especialista en Psicología Clínica
+                    de la Universidad Católica de Colombia. Cuenta con amplia experiencia en contextos educativos,
+                    clínicos
+                    y comunitarios, desarrollando procesos de orientación escolar, atención individual y familiar, así
+                    como
+                    talleres en temas de convivencia, salud mental y prevención.
+                </p>
+                <p>
+                    Ha trabajado con entidades públicas y privadas en proyectos como PARES Frutales, estrategia de Cero
+                    a
+                    Siempre y el Plan de Intervenciones Colectivas (PIC), aportando con compromiso y profesionalismo al
+                    bienestar psicosocial de diferentes poblaciones. Actualmente, se desempeña como psicóloga clínica en
+                    el
+                    centro terapéutico CreSer, liderando procesos de evaluación, diagnóstico y tratamiento.
+                </p>
+                <p>
+                    Con una vocación profundamente humana, DIANA MILENA enfoca su labor en el acompañamiento respetuoso
+                    y empático,
+                    fortaleciendo las capacidades personales para enfrentar los retos de la vida.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-info">
+            <img src="recursos/logo2.png" alt="" id="logo-footer" onerror="this.style.display='none'">
+            <h3>Ubicación</h3>
+            <h4>Síguenos</h4>
+            <div class="social-icons">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-whatsapp"></i></a>
+            </div>
+            <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a></p>
+        </div>
+
+        <div class="footer-form">
+            <h3>Contáctanos</h3>
+            <form id="contact-form">
+                <input type="text" name="nombre" placeholder="Nombre" required>
+                <input type="tel" name="telefono" placeholder="Teléfono" required>
+                <input type="email" name="email" placeholder="Correo electrónico" required>
+                <textarea name="mensaje" placeholder="Mensaje" rows="3" required></textarea>
+                <button type="submit">Enviar</button>
+            </form>
+        </div>
+    </footer>
+
+    <!-- SCRIPTS ACTUALIZADOS -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="/frontend/js/header-adaptativo.js"></script>
+
+</body>
+
+</html>

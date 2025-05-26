@@ -1,0 +1,498 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from typing import List
+import logging
+from datetime import datetime, timezone
+
+from app.config.database import get_db
+from app.utils.security import get_current_active_user, require_admin, get_password_hash
+from app.models.usuario import Usuario
+from app.models.cita import Cita
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+# ============ ENDPOINTS ESPECÍFICOS PRIMERO ============
+
+@router.get("/perfil")
+async def obtener_perfil_usuario(
+    current_user: Usuario = Depends(get_current_active_user)
+):
+    """Obtener perfil del usuario actual"""
+    return current_user.to_dict()
+
+@router.put("/perfil")
+async def actualizar_perfil_usuario(
+    datos: dict,
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Actualizar perfil del usuario autenticado"""
+    try:
+        logger.info(f"Actualizando perfil del usuario {current_user.id}")
+        
+        # Obtener usuario fresco de la BD
+        usuario = db.query(Usuario).filter(Usuario.id == current_user.id).first()
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Campos que el usuario puede actualizar
+        campos_permitidos = ['nombre', 'telefono', 'documento', 'direccion', 'fecha_nacimiento', 'genero', 'configuracion']
+        
+        # Actualizar solo campos permitidos
+        for campo in campos_permitidos:
+            if campo in datos and datos[campo] is not None:
+                setattr(usuario, campo, datos[campo])
+                logger.info(f"Campo {campo} actualizado")
+        
+        # Verificar documento único si se está cambiando
+        if 'documento' in datos and datos['documento'] != usuario.documento:
+            if datos['documento']:  # Solo si no es None o vacío
+                doc_existente = db.query(Usuario).filter(
+                    Usuario.documento == datos['documento'],
+                    Usuario.id != current_user.id
+                ).first()
+                if doc_existente:
+                    raise HTTPException(status_code=400, detail="Ya existe un usuario con este documento")
+        
+        # Actualizar timestamp
+        usuario.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        db.refresh(usuario)
+        
+        logger.info(f"Perfil del usuario {current_user.id} actualizado exitosamente")
+        
+        return usuario.to_dict()
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error actualizando perfil del usuario {current_user.id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error actualizando perfil: {str(e)}")
+
+@router.get("/creditos")
+async def obtener_creditos_usuario(
+    current_user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Obtener créditos detallados del usuario"""
+    try:
+        # Verificar si existe tabla creditos
+        try:
+            from app.models.credito import Credito
+            from app.models.servicio import Servicio
+            
+            # Consulta con JOIN para obtener información completa
+            creditos = db.query(Credito, Servicio).join(
+                Servicio, Credito.servicio_id == Servicio.id
+            ).filter(
+                Credito.usuario_id == current_user.id,
+                Credito.estado == "activo",
+                Credito.cantidad_disponible > 0
+            ).all()
+            
+            creditos_response = []
+            for credito, servicio in creditos:
+                creditos_response.append({
+                    "id": credito.id,
+                    "servicio_id": servicio.id,
+                    "servicio_nombre": servicio.nombre,
+                    "servicio_codigo": servicio.codigo,
+                    "cantidad_inicial": credito.cantidad_inicial,
+                    "cantidad_disponible": credito.cantidad_disponible,
+                    "cantidad_usada": credito.cantidad_inicial - credito.cantidad_disponible,
+                    "precio_unitario": float(credito.precio_unitario),
+                    "duracion": servicio.duracion_minutos,
+                    "fecha_compra": credito.created_at.isoformat() if credito.created_at else None,
+                    "fecha_vencimiento": credito.fecha_vencimiento.isoformat() if credito.fecha_vencimiento else None,
+                    "estado": credito.estado
+                })
+            
+            return creditos_response
+            
+        except ImportError:
+            # Si no existe tabla creditos, devolver array vacío
+            logger.warning("Tabla creditos no existe, devolviendo array vacío")
+            return []
+            
+    except Exception as e:
+        logger.error(f"Error obteniendo créditos del usuario {current_user.id}: {e}")
+        # En caso de error, devolver array vacío en lugar de error
+        return []
+
+@router.get("/buscar-por-email-publico")
+async def buscar_usuario_por_email_publico(
+    email: str = Query(..., description="Email del usuario a buscar"),
+    db: Session = Depends(get_db)
+):
+    """Buscar usuario por email - ENDPOINT PÚBLICO para sistema de pagos"""
+    try:
+        logger.info(f"Búsqueda pública de usuario por email: {email}")
+        
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+        
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Retornar solo datos básicos por seguridad
+        return {
+            "id": usuario.id,
+            "nombre": usuario.nombre,
+            "email": usuario.email,
+            "telefono": usuario.telefono,
+            "documento": usuario.documento,
+            "tipo": usuario.tipo,
+            "estado": usuario.estado
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en búsqueda pública por email: {e}")
+        raise HTTPException(status_code=500, detail="Error buscando usuario")
+
+@router.post("/registro", status_code=status.HTTP_201_CREATED)
+async def registro_publico(
+    usuario_data: dict,
+    db: Session = Depends(get_db)
+):
+    """Registro público - retorna usuario existente si ya existe"""
+    try:
+        email = usuario_data['email']
+        logger.info(f"Registro/verificación para: {email}")
+        
+        # Verificar si el usuario ya existe
+        usuario_existente = db.query(Usuario).filter(Usuario.email == email).first()
+        
+        if usuario_existente:
+            logger.info(f"Usuario existente encontrado: {usuario_existente.id}")
+            # RETORNAR usuario existente en lugar de error
+            return usuario_existente.to_dict()
+        
+        # Crear nuevo usuario solo si no existe
+        nuevo_usuario = Usuario(
+            nombre=usuario_data['nombre'],
+            email=usuario_data['email'],
+            telefono=usuario_data.get('telefono'),
+            documento=usuario_data.get('documento'),
+            password=get_password_hash(usuario_data['password']),
+            tipo='cliente',
+            estado='activo'
+        )
+        
+        db.add(nuevo_usuario)
+        db.commit()
+        db.refresh(nuevo_usuario)
+        
+        logger.info(f"Nuevo usuario creado: {nuevo_usuario.id}")
+        return nuevo_usuario.to_dict()
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error en registro: {e}")
+        raise HTTPException(status_code=500, detail="Error en registro")
+
+@router.get("/")
+async def listar_usuarios(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Listar todos los usuarios (solo administradores)"""
+    try:
+        logger.info("Listando usuarios para admin")
+        
+        usuarios = db.query(Usuario).offset(skip).limit(limit).all()
+        
+        logger.info(f"Usuarios cargados desde BD: {len(usuarios)}")
+        
+        usuarios_response = []
+        for usuario in usuarios:
+            try:
+                total_citas = db.query(func.count(Cita.id)).filter(
+                    Cita.usuario_id == usuario.id
+                ).scalar() or 0
+                
+                try:
+                    from app.models.credito import Credito
+                    creditos_disponibles = db.query(func.sum(Credito.cantidad_disponible)).filter(
+                        Credito.usuario_id == usuario.id,
+                        Credito.estado == 'activo'
+                    ).scalar() or 0
+                except ImportError:
+                    creditos_disponibles = 0
+                
+                usuario_dict = usuario.to_dict()
+                usuario_dict['creditos_disponibles'] = creditos_disponibles
+                usuario_dict['total_citas'] = total_citas
+                
+                usuarios_response.append(usuario_dict)
+                
+            except Exception as e:
+                logger.warning(f"Error procesando usuario {usuario.id}: {e}")
+                usuarios_response.append(usuario.to_dict())
+        
+        return usuarios_response
+        
+    except Exception as e:
+        logger.error(f"Error listando usuarios: {e}")
+        raise HTTPException(status_code=500, detail="Error obteniendo usuarios")
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def crear_usuario(
+    usuario_data: dict,
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Crear nuevo usuario (solo administradores)"""
+    try:
+        logger.info(f"Admin {current_admin.id} creando nuevo usuario")
+        
+        # Verificar si el email ya existe
+        email_existente = db.query(Usuario).filter(Usuario.email == usuario_data['email']).first()
+        if email_existente:
+            raise HTTPException(status_code=400, detail="Ya existe un usuario con este email")
+        
+        # Verificar si el documento ya existe (si se proporciona)
+        if usuario_data.get('documento'):
+            doc_existente = db.query(Usuario).filter(Usuario.documento == usuario_data['documento']).first()
+            if doc_existente:
+                raise HTTPException(status_code=400, detail="Ya existe un usuario con este documento")
+        
+        # Hashear contraseña
+        password_hash = get_password_hash(usuario_data['password'])
+        
+        # Crear nuevo usuario
+        nuevo_usuario = Usuario(
+            nombre=usuario_data['nombre'],
+            email=usuario_data['email'],
+            telefono=usuario_data['telefono'],
+            documento=usuario_data.get('documento'),
+            password=password_hash,
+            direccion=usuario_data.get('direccion'),
+            fecha_nacimiento=usuario_data.get('fecha_nacimiento'),
+            genero=usuario_data.get('genero'),
+            tipo=usuario_data.get('tipo', 'cliente'),
+            estado=usuario_data.get('estado', 'activo')
+        )
+        
+        db.add(nuevo_usuario)
+        db.commit()
+        db.refresh(nuevo_usuario)
+        
+        logger.info(f"Usuario {nuevo_usuario.id} creado exitosamente por admin {current_admin.id}")
+        
+        return nuevo_usuario.to_dict()
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creando usuario: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creando usuario: {str(e)}")
+
+# ============ ENDPOINTS CON PARÁMETROS AL FINAL ============
+
+@router.get("/buscar-por-email")
+async def buscar_usuario_por_email(
+    email: str = Query(..., description="Email del usuario a buscar"),
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Buscar usuario por email (solo admin)"""
+    try:
+        logger.info(f"Admin buscando usuario por email: {email}")
+        
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+        
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        return usuario.to_dict()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error buscando usuario por email: {e}")
+        raise HTTPException(status_code=500, detail="Error buscando usuario")
+
+@router.get("/{usuario_id}")
+async def obtener_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_active_user)
+):
+    """Obtener usuario por ID"""
+    try:
+        logger.info(f"Obteniendo usuario {usuario_id}")
+        
+        # Verificar permisos: admin puede ver todos, cliente solo su propio perfil
+        if current_user.tipo != "administrador" and current_user.id != usuario_id:
+            raise HTTPException(status_code=403, detail="No tienes permisos para ver este usuario")
+        
+        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Calcular estadísticas manualmente
+        try:
+            total_citas = db.query(func.count(Cita.id)).filter(
+                Cita.usuario_id == usuario_id
+            ).scalar() or 0
+            
+            try:
+                from app.models.credito import Credito
+                creditos_disponibles = db.query(func.sum(Credito.cantidad_disponible)).filter(
+                    Credito.usuario_id == usuario_id,
+                    Credito.estado == 'activo'
+                ).scalar() or 0
+            except ImportError:
+                creditos_disponibles = 0
+            
+            usuario_data = usuario.to_dict()
+            usuario_data['total_citas'] = total_citas
+            usuario_data['creditos_disponibles'] = creditos_disponibles
+            
+            logger.info(f"Usuario {usuario_id} obtenido exitosamente")
+            return usuario_data
+            
+        except Exception as e:
+            logger.error(f"Error calculando estadísticas para usuario {usuario_id}: {e}")
+            return usuario.to_dict()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error obteniendo usuario {usuario_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error obteniendo usuario")
+
+@router.put("/{usuario_id}")
+async def actualizar_usuario(
+    usuario_id: int,
+    usuario_data: dict,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_active_user)
+):
+    """Actualizar usuario"""
+    try:
+        logger.info(f"Actualizando usuario {usuario_id}")
+        
+        # Verificar permisos
+        if current_user.tipo != "administrador" and current_user.id != usuario_id:
+            raise HTTPException(status_code=403, detail="No tienes permisos para actualizar este usuario")
+        
+        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Actualizar campos permitidos
+        campos_actualizables = ['nombre', 'telefono', 'documento', 'direccion', 'fecha_nacimiento', 'genero']
+        
+        # Solo admin puede cambiar estado y tipo
+        if current_user.tipo == "administrador":
+            campos_actualizables.extend(['estado', 'tipo'])
+        
+        for campo in campos_actualizables:
+            if campo in usuario_data and usuario_data[campo] is not None:
+                setattr(usuario, campo, usuario_data[campo])
+        
+        # Verificar email único si se está cambiando
+        if 'email' in usuario_data and usuario_data['email'] != usuario.email:
+            if current_user.tipo == "administrador":  # Solo admin puede cambiar email
+                email_existente = db.query(Usuario).filter(
+                    Usuario.email == usuario_data['email'],
+                    Usuario.id != usuario_id
+                ).first()
+                if email_existente:
+                    raise HTTPException(status_code=400, detail="Ya existe un usuario con este email")
+                usuario.email = usuario_data['email']
+        
+        # Verificar documento único si se está cambiando
+        if 'documento' in usuario_data and usuario_data['documento'] != usuario.documento:
+            if usuario_data['documento']:  # Solo si no es None o vacío
+                doc_existente = db.query(Usuario).filter(
+                    Usuario.documento == usuario_data['documento'],
+                    Usuario.id != usuario_id
+                ).first()
+                if doc_existente:
+                    raise HTTPException(status_code=400, detail="Ya existe un usuario con este documento")
+        
+        # Actualizar contraseña si se proporciona
+        if 'password' in usuario_data and usuario_data['password']:
+            usuario.password = get_password_hash(usuario_data['password'])
+        
+        # Actualizar timestamp
+        usuario.updated_at = datetime.now(timezone.utc)
+        
+        db.commit()
+        db.refresh(usuario)
+        
+        logger.info(f"Usuario {usuario_id} actualizado exitosamente")
+        
+        return usuario.to_dict()
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error actualizando usuario {usuario_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error actualizando usuario: {str(e)}")
+
+@router.delete("/{usuario_id}")
+async def eliminar_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Eliminar usuario (solo administradores)"""
+    try:
+        logger.info(f"Admin {current_admin.id} eliminando usuario {usuario_id}")
+        
+        usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+        
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # No permitir eliminar administradores
+        if usuario.tipo == "administrador":
+            raise HTTPException(status_code=400, detail="No se puede eliminar un administrador")
+        
+        # No permitir auto-eliminación
+        if usuario.id == current_admin.id:
+            raise HTTPException(status_code=400, detail="No puedes eliminarte a ti mismo")
+        
+        # Verificar si tiene citas pendientes
+        citas_pendientes = db.query(func.count(Cita.id)).filter(
+            Cita.usuario_id == usuario_id,
+            Cita.estado.in_(['agendada', 'confirmada'])
+        ).scalar() or 0
+        
+        if citas_pendientes > 0:
+            raise HTTPException(status_code=400, detail=f"No se puede eliminar: tiene {citas_pendientes} citas pendientes")
+        
+        # En lugar de eliminar, cambiar estado a inactivo
+        usuario.estado = 'inactivo'
+        usuario.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        
+        logger.info(f"Usuario {usuario_id} desactivado exitosamente")
+        
+        return {"message": "Usuario desactivado exitosamente"}
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error eliminando usuario {usuario_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error eliminando usuario: {str(e)}")

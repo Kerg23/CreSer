@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/estilos-servicios.css">
+    <link rel="stylesheet" href="css/estilos-navbar.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <title>Servicios - CreSer</title>
+</head>
+
+<body>
+    <!-- Barra de navegación -->
+
+        <!-- HEADER ADAPTATIVO ACTUALIZADO -->
+    <header>
+        <div class="navbar">
+            <div class="logo">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
+            </div>
+            <nav class="menu">
+                <a href="index.html" >Inicio</a>
+                <a href="servicios.html" class="activo">Servicios</a>
+                <a href="comprar.html">Comprar</a>
+                <a href="noticias.html">Noticias</a>
+                
+                <!-- NAVEGACIÓN ADAPTATIVA -->
+                <div id="nav-auth-container">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="boton-acceder">
+                        <a href="acceder.html">
+                            <i class="fas fa-sign-in-alt"></i> Acceder
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Contenido principal -->
+    <main>
+        <!-- Título principal -->
+        <section class="titulo-principal">
+            <h1>PORTAFOLIO DE SERVICIOS EN SALUD MENTAL</h1>
+            <div class="subtitulo">
+                <p>Psic. Diana Milena Rodríguez</p>
+                <p>Especialista en Psicología Clínica</p>
+            </div>
+        </section>
+
+        <!-- Categorías de servicios -->
+        <section class="categorias-servicios">
+            <div class="categoria-item">
+                <h2>SERVICIOS DE EVALUACIÓN</h2>
+
+                <div class="servicio-card">
+                    <div class="servicio-header" onclick="toggleServicio('desc-valoracion')">
+                        <div class="servicio-info">
+                            <h3>Valoración Psicológica Individual</h3>
+                            <p class="duracion">60 min</p>
+                            <p class="precio">$100.000</p>
+                        </div>
+                        <span class="expandir">+</span>
+                    </div>
+                    <div id="desc-valoracion" class="servicio-descripcion">
+                        <p>La valoración psicológica individual es un proceso integral de evaluación que permite
+                            identificar y comprender las características psicológicas, emocionales y comportamentales de
+                            la persona. Durante esta sesión de 60 minutos, se realiza una entrevista clínica
+                            estructurada donde se exploran los motivos de consulta, antecedentes personales y
+                            familiares, así como el funcionamiento actual en diferentes áreas de la vida. Este servicio
+                            incluye la aplicación de instrumentos psicológicos específicos cuando sea necesario y
+                            culmina con la entrega de un informe detallado que orienta sobre las necesidades
+                            terapéuticas y recomendaciones pertinentes.</p>
+                    </div>
+                </div>
+
+                <div class="servicio-card">
+                    <div class="servicio-header" onclick="toggleServicio('desc-evaluacion')">
+                        <div class="servicio-info">
+                            <h3>Proceso de Evaluación y Diagnóstico Completo</h3>
+                            <ul>
+                                <li>Paquete de 5 sesiones: <span class="precio">$370.000</span> <span
+                                        class="ahorro">(ahorro del 7.5%)</span></li>
+                                <li>Sesión individual: <span class="precio">$80.000</span></li>
+                            </ul>
+                        </div>
+                        <span class="expandir">+</span>
+                    </div>
+                    <div id="desc-evaluacion" class="servicio-descripcion">
+                        <p>Este proceso comprensivo de 5 sesiones está diseñado para realizar una evaluación exhaustiva
+                            que permita establecer un diagnóstico clínico preciso. Incluye múltiples entrevistas
+                            clínicas, aplicación de pruebas psicométricas especializadas, observación clínica y análisis
+                            del funcionamiento psicosocial. El proceso culmina con la elaboración de un informe
+                            psicológico completo que incluye diagnóstico basado en criterios internacionales (DSM-V o
+                            CIE-11), pronóstico y plan de tratamiento recomendado. La modalidad de paquete ofrece un
+                            ahorro significativo para quienes requieren esta evaluación integral.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="categoria-item">
+                <h2>SERVICIOS TERAPÉUTICOS</h2>
+
+                <div class="servicio-card">
+                    <div class="servicio-header" onclick="toggleServicio('desc-psicoterapia')">
+                        <div class="servicio-info">
+                            <h3>Psicoterapia Individual</h3>
+                            <p class="duracion">60 min</p>
+                            <ul>
+                                <li>Sesión individual: <span class="precio">$70.000</span></li>
+                                <li>Paquete de 4 sesiones: <span class="precio">$260.000</span> <span
+                                        class="ahorro">(ahorro del 7.5%)</span></li>
+                                <li>Paquete de 8 sesiones: <span class="precio">$500.000</span> <span
+                                        class="ahorro">(ahorro del 10%)</span></li>
+                            </ul>
+                        </div>
+                        <span class="expandir">+</span>
+                    </div>
+                    <div id="desc-psicoterapia" class="servicio-descripcion">
+                        <p>La psicoterapia individual es un espacio terapéutico personalizado donde se abordan las
+                            dificultades emocionales, comportamentales y relacionales que afectan el bienestar de la
+                            persona. Utilizando enfoques basados en evidencia científica, cada sesión de 60 minutos se
+                            centra en desarrollar técnicas y estrategias que permitan al paciente comprender y superar
+                            sus problemáticas. Este servicio está dirigido a adultos, adolescentes y niños, adaptando
+                            las intervenciones según la etapa del desarrollo y las necesidades específicas de cada grupo
+                            etario. Se trabajan condiciones como depresión, ansiedad, estrés, duelo, baja autoestima,
+                            trastornos adaptativos y dificultades relacionales.</p>
+                    </div>
+                </div>
+
+                <div class="servicio-card">
+                    <div class="servicio-header" onclick="toggleServicio('desc-pareja')">
+                        <div class="servicio-info">
+                            <h3>Psicoterapia de Pareja</h3>
+                            <ul>
+                                <li>Valoración inicial <span class="duracion">(90 min)</span>: <span
+                                        class="precio">$120.000</span></li>
+                                <li>Sesión regular <span class="duracion">(60 min)</span>: <span
+                                        class="precio">$100.000</span></li>
+                            </ul>
+                        </div>
+                        <span class="expandir">+</span>
+                    </div>
+                    <div id="desc-pareja" class="servicio-descripcion">
+                        <h3>Valoración Inicial</h3>
+                        <p>La valoración inicial de pareja es una sesión extendida de 90 minutos donde se establece el
+                            primer contacto terapéutico con ambos miembros de la relación. Durante esta sesión se
+                            explora la historia de la pareja, se identifican las problemáticas actuales, se evalúan los
+                            patrones de comunicación y se establecen los objetivos terapéuticos. El terapeuta mantiene
+                            una posición neutral y facilita que ambos miembros expresen sus perspectivas, creando un
+                            espacio seguro para el inicio del proceso terapéutico. Esta valoración incluye la
+                            formulación de un plan de tratamiento específico y el establecimiento del encuadre
+                            terapéutico.</p>
+                        <h3>Sesiones Regulares</h3>
+                        <p>Las sesiones regulares de terapia de pareja son encuentros de 60 minutos donde se trabaja de
+                            manera conjunta con ambos miembros de la relación. El objetivo es mejorar la comunicación,
+                            resolver conflictos, fortalecer el vínculo emocional y desarrollar herramientas para una
+                            convivencia más saludable. Se utilizan enfoques integrativos que pueden incluir técnicas
+                            cognitivo-conductuales, sistémicas y basadas en el apego, según las necesidades específicas
+                            de cada pareja. Las sesiones siempre son conjuntas, ya que la pareja como sistema es el foco
+                            de la intervención.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="categoria-item">
+                <h2>SERVICIOS ESPECIALIZADOS</h2>
+
+                <div class="servicio-card">
+                    <div class="servicio-header" onclick="toggleServicio('desc-talleres')">
+                        <div class="servicio-info">
+                            <h3>Talleres Grupales en Salud Mental</h3>
+                            <p class="precio">$45.000 <span class="detalle">por persona</span></p>
+                        </div>
+                        <span class="expandir">+</span>
+                    </div>
+                    <div id="desc-talleres" class="servicio-descripcion">
+                        <p>Los talleres grupales en salud mental constituyen intervenciones psicoeducativas
+                            estructuradas que abordan temáticas específicas mediante metodologías participativas basadas
+                            en evidencia científica. Estos espacios terapéuticos grupales están diseñados para promover
+                            el bienestar psicológico y prevenir trastornos mentales a través del desarrollo de
+                            habilidades de afrontamiento, técnicas de regulación emocional, manejo del estrés y
+                            fortalecimiento de la autoestima. Las modalidades incluyen talleres de manejo de ansiedad,
+                            comunicación asertiva, mindfulness, habilidades parentales y prevención de problemáticas
+                            psicosociales, combinando técnicas cognitivo-conductuales con dinámicas grupales que
+                            facilitan el aprendizaje colaborativo y la aplicación práctica de estrategias en la vida
+                            cotidiana.</p>
+                    </div>
+                </div>
+
+                <div class="servicio-card">
+                    <div class="servicio-header" onclick="toggleServicio('desc-consultoria')">
+                        <div class="servicio-info">
+                            <h3>Consultoría a Instituciones Educativas</h3>
+                            <p class="precio">Según proyecto</p>
+                        </div>
+                        <span class="expandir">+</span>
+                    </div>
+                    <div id="desc-consultoria" class="servicio-descripcion">
+                        <p>La consultoría a instituciones educativas es un servicio especializado que aplica los
+                            principios de la psicología clínica al ámbito educativo para optimizar el bienestar
+                            psicosocial de toda la comunidad educativa. Este servicio incluye la evaluación del clima
+                            escolar, diseño e implementación de programas de convivencia, capacitación docente en manejo
+                            de situaciones emocionales y comportamentales, desarrollo de protocolos de atención
+                            psicológica estudiantil, y estrategias de prevención del acoso escolar. Se trabaja de manera
+                            integral con directivos, docentes, estudiantes y familias, aplicando técnicas
+                            científicamente validadas para crear ambientes educativos saludables que favorezcan tanto el
+                            aprendizaje como el desarrollo socioemocional de los estudiantes.</p>
+                    </div>
+                </div>
+
+                <div class="servicio-card">
+                    <div class="servicio-header" onclick="toggleServicio('desc-familiar')">
+                        <div class="servicio-info">
+                            <h3>Orientación Familiar</h3>
+                            <p class="duracion">90 min</p>
+                            <p class="precio">$110.000</p>
+                        </div>
+                        <span class="expandir">+</span>
+                    </div>
+                    <div id="desc-familiar" class="servicio-descripcion">
+                        <p>La orientación familiar es un proceso de ayuda especializado encaminado a facilitar una
+                            dinámica familiar positiva, encontrar solución a problemas y fortalecer el bienestar de
+                            todos los miembros del sistema familiar. Este servicio abarca desde la evaluación del
+                            funcionamiento familiar hasta la intervención en crisis del ciclo vital, situaciones de
+                            conflicto, problemas adaptativos y dificultades en la comunicación intrafamiliar. La
+                            orientación familiar incluye funciones informativas para mejorar la comprensión de recursos
+                            disponibles, educativas para proporcionar herramientas de crianza y desarrollo integral, de
+                            asesoramiento ante diferentes etapas vitales, y de tratamiento para superar dinámicas
+                            disfuncionales. Se utiliza un enfoque sistémico que considera a la familia como una unidad,
+                            trabajando en el fortalecimiento de vínculos, establecimiento de límites saludables y
+                            desarrollo de estrategias de resolución de conflictos.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Información adicional -->
+        <section class="info-adicional">
+            <div class="beneficios">
+                <div class="beneficio-item">
+                    <span class="icono">✓</span>
+                    <p>Disponibilidad de sesiones virtuales</p>
+                </div>
+                <div class="beneficio-item">
+                    <span class="icono">✓</span>
+                    <p>Posibilidad de horarios flexibles con cita previa</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Llamado a la acción -->
+        <section class="cta-seccion">
+            <div class="cta-container">
+                <h2>Agenda tu cita hoy</h2>
+                <a href="agendar-cita.html" class="btn-agendar">Agenda tu cita</a>
+            </div>
+        </section>
+    </main>
+
+    <!-- Pie de página -->
+    <footer class="footer">
+        <div class="footer-info">
+            <img src="recursos/logo2.png" alt="" id="logo-footer">
+            <h3>Ubicación</h3>
+            <h4>Síguenos</h4>
+            <div class="social-icons">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-whatsapp"></i></a>
+            </div>
+            <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a></p>
+        </div>
+
+        <div class="footer-form">
+            <h3>Contáctanos</h3>
+            <form>
+                <input type="text" placeholder="Nombre" required>
+                <input type="tel" placeholder="Teléfono" required>
+                <input type="email" placeholder="Correo electrónico" required>
+                <textarea placeholder="Mensaje" rows="3" required></textarea>
+                <button type="submit">Enviar</button>
+            </form>
+        </div>
+    </footer>
+
+    <script src="js/servicios.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="/frontend/js/header-adaptativo.js"></script>
+
+</body>
+
+</html>

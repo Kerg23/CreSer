@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agendar Cita | CreSer</title>
+  <link rel="stylesheet" href="css/agendar-cita.css" />
+  <link rel="stylesheet" href="css/estilos-navbar.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <!-- HEADER ADAPTATIVO CORREGIDO -->
+ <header>
+        <div class="navbar">
+            <div class="logo">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
+            </div>
+            <nav class="menu">
+                <a href="index.html" class="activo">Inicio</a>
+                <a href="servicios.html">Servicios</a>
+                <a href="comprar.html">Comprar</a>
+                <a href="noticias.html">Noticias</a>
+                
+                <!-- NAVEGACIÓN ADAPTATIVA -->
+                <div id="nav-auth-container">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="boton-acceder">
+                        <a href="acceder.html">
+                            <i class="fas fa-sign-in-alt"></i> Acceder
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+  <!-- ✅ REMOVIDO: Sección de créditos disponibles -->
+  <!-- 
+  <section class="creditos-info" id="creditos-disponibles">
+    <div class="loading">Cargando tus créditos disponibles...</div>
+  </section>
+  -->
+
+  <section class="agenda-container">
+    <h1>Agendar una Cita</h1>
+    
+    <!-- ✅ REMOVIDO: Mensaje sin créditos -->
+    <!-- 
+    <div id="mensaje-sin-creditos" class="sin-creditos" style="display: none;">
+      <div class="mensaje-contenido">
+        <i class="fas fa-credit-card"></i>
+        <h3>No tienes créditos disponibles</h3>
+        <p>Para agendar una cita necesitas tener créditos disponibles.</p>
+        <a href="comprar.html" class="btn-primary">Comprar Créditos</a>
+      </div>
+    </div>
+    -->
+
+    <!-- ✅ AGREGADO: Información de servicios -->
+    <div class="info-servicios">
+      <div class="info-card">
+        <i class="fas fa-info-circle"></i>
+        <p>Selecciona el servicio que necesitas y agenda tu cita. Todos nuestros servicios están disponibles en modalidad presencial y virtual.</p>
+      </div>
+    </div>
+
+    <form id="agenda-form">
+      <div class="form-group">
+        <label for="servicio">Servicio:</label>
+        <select id="servicio" name="servicio" required>
+          <option value="">Cargando servicios disponibles...</option>
+        </select>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="fecha">Fecha:</label>
+          <input type="date" id="fecha" name="fecha" required />
+        </div>
+
+        <div class="form-group">
+          <label for="hora">Hora:</label>
+          <select id="hora" name="hora" required disabled>
+            <option value="">Primero selecciona fecha y servicio</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modalidad-container">
+        <label>Modalidad:</label>
+        <label><input type="radio" name="modalidad" value="presencial" required> Presencial</label>
+        <label><input type="radio" name="modalidad" value="virtual"> Virtual</label>
+      </div>
+
+      <div class="form-group">
+        <label for="comentarios">Comentarios adicionales (opcional):</label>
+        <textarea id="comentarios" name="comentarios"
+          placeholder="Describe brevemente el motivo de tu consulta o cualquier información adicional"
+          rows="4"></textarea>
+      </div>
+
+      <div class="resumen-cita" id="resumen-cita" style="display: none;">
+        <h3>Resumen de tu cita:</h3>
+        <div class="resumen-content">
+          <p><strong>Servicio:</strong> <span id="resumen-servicio"></span></p>
+          <p><strong>Fecha y hora:</strong> <span id="resumen-fecha-hora"></span></p>
+          <p><strong>Modalidad:</strong> <span id="resumen-modalidad"></span></p>
+          <p><strong>Precio:</strong> <span id="resumen-precio"></span></p>
+        </div>
+      </div>
+
+      <button type="submit" id="agendar-btn" disabled>
+        <i class="fas fa-calendar-plus"></i> Agendar Cita
+      </button>
+    </form>
+  </section>
+
+  <!-- MODAL DE CONFIRMACIÓN -->
+  <div id="modal-confirmacion" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>¡Cita Agendada Exitosamente!</h3>
+        <span class="close" onclick="cerrarModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="modal-body-content">
+        <!-- Contenido dinámico -->
+      </div>
+      <div class="modal-footer">
+        <button onclick="window.location.href='perfil-cliente.html'" class="btn-primary">Ver Mis Citas</button>
+        <button onclick="cerrarModal()" class="btn-secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ SCRIPTS CORREGIDOS CON RUTAS ABSOLUTAS -->
+  <script defer src="/js/config.js"></script>
+  <script defer src="/js/auth.js"></script>
+  <script defer src="/js/agendar-cita.js"></script>
+  <script defer src="/frontend/js/header-adaptativo.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,179 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+body{
+    margin: 0;
+    min-height: 100vh
+}
+
+.navbar{
+    position: fixed;
+}
+.primer-contenido {
+  background-color: #EFFCFC;
+  padding: 60px 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.contenido-incio {
+  max-width: 1200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 50px;
+  margin-top: 100px;
+  flex-wrap: wrap-reverse;
+
+}
+
+.parrafo-introduccion {
+  background-color: white;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  flex: 1 1 450px;
+}
+
+#logo-contenido {
+  width: 200px;
+  height: 80px;
+  display: block;
+  margin: 0 auto 20px;
+}
+
+.texto {
+  font-size: 1.1rem;
+  color: #333;
+  line-height: 1.6;
+  text-align: justify;
+}
+
+#logo1-2 {
+  max-width: 200px;
+  flex: 1 1 200px;
+}
+
+section h1 {
+  font-size: 2rem;
+  margin: 60px 0 30px;
+  text-align: center;
+  color: #5fbfb3;
+  font-weight: 400;
+}
+
+.introduccion-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  padding: 0 40px 60px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+#psicologa-img {
+  width: 300px;
+  height: auto;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.perfil-profesional {
+  max-width: 600px;
+  font-size: 1rem;
+  color: #333;
+  line-height: 1.6;
+  text-align: justify;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 2rem;
+  background-color: #FCEFEF; /*#dceeea*/
+  color: #004d40;
+  flex-wrap: wrap;
+}
+
+.footer-info,
+.footer-form {
+  flex: 1 1 300px;
+  margin: 1rem;
+  padding-right: 5rem;
+  
+}
+
+.footer h3, .footer h4 {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.social-icons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.social-icons a {
+  font-size: 24px;
+  color: #004d40;
+  transition: transform 0.2s ease, color 0.3s ease;
+}
+
+.social-icons a:hover {
+  transform: scale(1.2);
+}
+
+.social-icons a:nth-child(1) { color: #1877f2; }  
+.social-icons a:nth-child(2) { color: #e4405f; }  
+.social-icons a:nth-child(3) { color: #25d366; }  
+
+.footer-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.footer-form input,
+.footer-form textarea {
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: none;
+}
+
+.footer-form button {
+  padding: 0.7rem;
+  background-color: #f3cc0c;
+  border: none;
+  border-radius: 20px;
+  font-family: 'Montserrat';
+  color: #333333;
+  font-weight:bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.footer-form button:hover {
+  background-color: #e6bc00;
+}
+#logo-footer{
+  width: 200px;
+  height: 80px;
+}
+
+
+@media (max-width: 768px) {
+  .footer {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .footer-info,
+  .footer-form {
+    width: 100%;
+    max-width: 500px;
+  }
+}

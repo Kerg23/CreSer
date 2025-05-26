@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprar Créditos - CreSer</title>
+    <link rel="stylesheet" href="/css/estilos-comprar.css">
+    <link rel="stylesheet" href="/css/estilos-navbar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- HEADER ADAPTATIVO -->
+    <header>
+        <div class="navbar">
+            <div class="logo">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
+            </div>
+            <nav class="menu">
+                <a href="index.html">Inicio</a>
+                <a href="servicios.html">Servicios</a>
+                <a href="comprar.html" class="activo">Comprar</a>
+                <a href="noticias.html">Noticias</a>
+                
+                <!-- NAVEGACIÓN ADAPTATIVA -->
+                <div id="nav-auth-container">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="boton-acceder">
+                        <a href="acceder.html">
+                            <i class="fas fa-sign-in-alt"></i> Acceder
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="titulo-principal">
+            <h1>Comprar Créditos de Servicios</h1>
+        </section>
+
+        <section class="descripcion-centro">
+            <div class="container">
+                <p class="texto-descripcion">
+                    Adquiere créditos para nuestros servicios terapéuticos y agenda tus citas cuando lo necesites.
+                    Los créditos no tienen fecha de vencimiento y puedes usarlos en cualquier momento.
+                </p>
+            </div>
+        </section>
+
+        <section class="beneficios-creditos">
+            <div class="container">
+                <div class="beneficios-grid">
+                    <div class="beneficio-item">
+                        <span class="icono">💻</span>
+                        <h3>Sesiones Virtuales</h3>
+                        <p>Disponibilidad de sesiones virtuales para mayor comodidad</p>
+                    </div>
+                    <div class="beneficio-item">
+                        <span class="icono">🕒</span>
+                        <h3>Horarios Flexibles</h3>
+                        <p>Posibilidad de horarios flexibles con cita previa</p>
+                    </div>
+                    <div class="beneficio-item">
+                        <span class="icono">⏰</span>
+                        <h3>Sin Vencimiento</h3>
+                        <p>Tus créditos no expiran, úsalos a tu ritmo</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Paquetes de Créditos -->
+        <section class="paquetes-creditos">
+            <div class="container">
+                <h2>Selecciona tu Paquete de Créditos</h2>
+                <div class="paquetes-grid">
+
+                    <!-- Paquete Individual -->
+                    <div class="paquete-card paquete-individual">
+                        <div class="paquete-header">
+                            <h3>Sesión Individual</h3>
+                            <p class="paquete-descripcion">Perfecto para comenzar tu proceso terapéutico</p>
+                        </div>
+                        <div class="servicios-incluidos">
+                            <div class="servicio-selector">
+                                <label>Selecciona tu servicio:</label>
+                                <select id="servicio-individual">
+                                    <option value="">Cargando servicios...</option>
+                                </select>
+                            </div>
+                            <div class="precio-paquete">
+                                <span class="precio" id="precio-individual">Selecciona un servicio</span>
+                            </div>
+                        </div>
+                        <button class="btn-seleccionar" onclick="seleccionarPaquete('individual')" disabled id="btn-individual">
+                            Seleccionar
+                        </button>
+                    </div>
+
+                    <!-- Paquete Múltiple -->
+                    <div class="paquete-card popular paquete-multiple">
+                        <div class="badge-popular">Más Popular</div>
+                        <div class="paquete-header">
+                            <h3>Paquete Múltiple</h3>
+                            <p class="paquete-descripcion">Combina diferentes servicios según tus necesidades</p>
+                        </div>
+                        <div class="servicios-incluidos">
+                            <div class="servicios-selector-multiple">
+                                <h4>Cargando servicios...</h4>
+                            </div>
+                            <div class="precio-paquete">
+                                <span class="precio" id="precio-multiple">$0</span>
+                                <span class="creditos-total" id="creditos-total">0 créditos</span>
+                            </div>
+                        </div>
+                        <button class="btn-seleccionar" onclick="seleccionarPaquete('multiple')" disabled id="btn-multiple">
+                            Seleccionar Paquete
+                        </button>
+                    </div>
+
+                    <!-- Paquete Evaluación Completa -->
+                    <div class="paquete-card">
+                        <div class="paquete-header">
+                            <h3>Paquete Evaluación Completa</h3>
+                            <p class="paquete-descripcion">Proceso completo de evaluación y diagnóstico</p>
+                        </div>
+                        <div class="servicios-incluidos">
+                            <ul class="servicios-lista">
+                                <li>5 × Sesiones de Evaluación y Diagnóstico</li>
+                                <li>Informe psicológico completo</li>
+                                <li>Plan de tratamiento recomendado</li>
+                            </ul>
+                            <div class="precio-paquete">
+                                <span class="precio-original">$400.000</span>
+                                <span class="precio">$370.000</span>
+                                <span class="descuento">Ahorro: $30.000 (7.5%)</span>
+                            </div>
+                        </div>
+                        <button class="btn-seleccionar" onclick="seleccionarPaquete('evaluacion-completa')">
+                            Seleccionar Paquete
+                        </button>
+                    </div>
+
+                    <!-- Paquete Psicoterapia 4 Sesiones -->
+                    <div class="paquete-card">
+                        <div class="paquete-header">
+                            <h3>Paquete Psicoterapia 4 Sesiones</h3>
+                            <p class="paquete-descripcion">Ideal para procesos terapéuticos cortos</p>
+                        </div>
+                        <div class="servicios-incluidos">
+                            <ul class="servicios-lista">
+                                <li>4 × Sesiones de Psicoterapia Individual</li>
+                                <li>Seguimiento personalizado</li>
+                            </ul>
+                            <div class="precio-paquete">
+                                <span class="precio-original">$280.000</span>
+                                <span class="precio">$260.000</span>
+                                <span class="descuento">Ahorro: $20.000 (7.5%)</span>
+                            </div>
+                        </div>
+                        <button class="btn-seleccionar" onclick="seleccionarPaquete('psicoterapia-4')">
+                            Seleccionar Paquete
+                        </button>
+                    </div>
+
+                    <!-- Paquete Psicoterapia 8 Sesiones -->
+                    <div class="paquete-card">
+                        <div class="paquete-header">
+                            <h3>Paquete Psicoterapia 8 Sesiones</h3>
+                            <p class="paquete-descripcion">Para procesos terapéuticos profundos</p>
+                        </div>
+                        <div class="servicios-incluidos">
+                            <ul class="servicios-lista">
+                                <li>8 × Sesiones de Psicoterapia Individual</li>
+                                <li>Seguimiento y evaluación continua</li>
+                            </ul>
+                            <div class="precio-paquete">
+                                <span class="precio-original">$560.000</span>
+                                <span class="precio">$500.000</span>
+                                <span class="descuento">Ahorro: $60.000 (10%)</span>
+                            </div>
+                        </div>
+                        <button class="btn-seleccionar" onclick="seleccionarPaquete('psicoterapia-8')">
+                            Seleccionar Paquete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Formulario de Pago -->
+        <section class="seccion-pago" id="seccion-pago" style="display: none;">
+            <div class="container">
+                <div class="pago-layout">
+                    <!-- Resumen de Compra -->
+                    <div class="resumen-compra">
+                        <h3>Resumen de tu Compra</h3>
+                        <div id="resumen-servicios">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                        <div class="total-section">
+                            <div class="total-line">
+                                <span>Subtotal:</span>
+                                <span id="subtotal-final">$0</span>
+                            </div>
+                            <div class="total-line">
+                                <span>IVA (0%):</span>
+                                <span>$0</span>
+                            </div>
+                            <div class="total-line total">
+                                <span><strong>Total a Pagar:</strong></span>
+                                <span><strong id="total-pagar">$0</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Cliente y Pago -->
+                    <div class="formulario-pago">
+                        <h3>Información Personal y Pago</h3>
+
+                        <form id="form-pago-simbolico">
+                            <!-- Datos Personales -->
+                            <div class="datos-personales">
+                                <h4>Datos Personales</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="nombre-completo">Nombre completo:</label>
+                                        <input type="text" id="nombre-completo" name="nombre" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="email">Correo electrónico:</label>
+                                        <input type="email" id="email" name="email" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="telefono">Teléfono:</label>
+                                        <input type="tel" id="telefono" name="telefono" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="documento">Documento de identidad:</label>
+                                        <input type="text" id="documento" name="documento" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pago Real -->
+                            <div class="pago-real">
+                                <h4>💳 Información de Pago</h4>
+                                <div class="info-notice">
+                                    <div class="notice-content">
+                                        <i class="fas fa-info-circle"></i>
+                                        <p><strong>Pago Real:</strong> Este proceso creará un pago real en el sistema y asignará créditos a tu cuenta.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="metodo-pago-real">
+                                    <label class="payment-option selected">
+                                        <input type="radio" name="metodo-pago" value="qr" checked>
+                                        <div class="option-content">
+                                            <span>📱 Código QR</span>
+                                            <small>Pago mediante código QR</small>
+                                        </div>
+                                    </label>
+                                    <label class="payment-option">
+                                        <input type="radio" name="metodo-pago" value="efectivo">
+                                        <div class="option-content">
+                                            <span>💵 Efectivo</span>
+                                            <small>Pago en efectivo en el centro</small>
+                                        </div>
+                                    </label>
+                                    <label class="payment-option">
+                                        <input type="radio" name="metodo-pago" value="transferencia">
+                                        <div class="option-content">
+                                            <span>🏦 Transferencia</span>
+                                            <small>Transferencia bancaria</small>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Términos y Condiciones -->
+                            <div class="terminos">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="acepto-terminos" required>
+                                    <span class="checkmark"></span>
+                                    Acepto los <a href="#" target="_blank">términos y condiciones</a> y autorizo el
+                                    procesamiento de mis datos
+                                </label>
+                            </div>
+
+                            <!-- Botones -->
+                            <div class="botones-pago">
+                                <button type="button" class="btn-cancelar" onclick="cancelarCompra()">Cancelar</button>
+                                <button type="submit" class="btn-pagar">
+                                    <i class="fas fa-credit-card"></i> Procesar Pago
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Confirmación -->
+        <section class="confirmacion" id="confirmacion" style="display: none;">
+            <div class="container">
+                <div class="confirmacion-card">
+                    <div class="success-icon">✅</div>
+                    <h2>¡Compra Exitosa!</h2>
+                    <p>Tus créditos han sido añadidos a tu cuenta</p>
+
+                    <div class="creditos-obtenidos">
+                        <h3>Créditos Obtenidos:</h3>
+                        <div id="lista-creditos-finales">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div class="info-cuenta">
+                        <h3>Información de tu Cuenta:</h3>
+                        <p>📧 Recibirás un correo con confirmación</p>
+                        <p>🔑 Podrás iniciar sesión y agendar tus citas cuando lo necesites</p>
+                        <p>📅 Tus créditos no tienen fecha de vencimiento</p>
+                    </div>
+
+                    <div class="acciones-finales">
+                        <a href="acceder.html" class="btn-iniciar-sesion">Iniciar Sesión</a>
+                        <a href="agendar-cita.html" class="btn-agendar-ahora">Agendar Cita Ahora</a>
+                        <button onclick="nuevaCompra()" class="btn-nueva-compra">Nueva Compra</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-info">
+            <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer" onerror="this.style.display='none'">
+            <h3>Ubicación</h3>
+            <p>Calle Principal #123, Ibagué, Colombia</p>
+            <h4>Síguenos</h4>
+            <div class="social-icons">
+                <a href="#"><i class="fab fa-facebook-f"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-whatsapp"></i></a>
+            </div>
+            <p>© 2025 CreSer, Inc. | <a href="#">Política de Privacidad</a> | <a href="#">Términos y Condiciones</a></p>
+        </div>
+
+        <div class="footer-form">
+            <h3>Contáctanos</h3>
+            <form action="procesar-contacto.php" method="post">
+                <input type="text" placeholder="Nombre" required>
+                <input type="tel" placeholder="Teléfono" required>
+                <input type="email" placeholder="Correo electrónico" required>
+                <textarea placeholder="Mensaje" rows="3" required></textarea>
+                <button type="submit">Enviar</button>
+            </form>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script defer src="/js/config.js"></script>
+    <script defer src="/js/auth.js"></script>
+    <script defer src="/frontend/js/header-adaptativo.js"></script>
+    <script defer src="/js/comprar.js"></script>
+</body>
+
+</html>
