@@ -10,19 +10,26 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <header>
+   <header>
         <div class="navbar">
             <div class="logo">
-                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1">
-                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
             </div>
             <nav class="menu">
-                <a href="index.html">Inicio</a>
+                <a href="index.html" class="activo">Inicio</a>
                 <a href="servicios.html">Servicios</a>
                 <a href="comprar.html">Comprar</a>
-                <a href="noticias.html" class="activo">Noticias</a>
-                <div class="boton-acceder">
-                    <a href="acceder.html">Acceder</a>
+                <a href="noticias.html">Noticias</a>
+                
+                <!-- NAVEGACIÓN ADAPTATIVA -->
+                <div id="nav-auth-container">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="boton-acceder">
+                        <a href="acceder.html">
+                            <i class="fas fa-sign-in-alt"></i> Acceder
+                        </a>
+                    </div>
                 </div>
             </nav>
         </div>
@@ -244,5 +251,7 @@
     </footer>
 
     <script src="js/noticias.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="/frontend/js/header-adaptativo.js"></script>
 </body>
 </html>
