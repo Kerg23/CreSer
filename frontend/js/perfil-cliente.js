@@ -1032,7 +1032,7 @@ function cerrarSesion() {
                 
                 // Redirigir después de un breve delay
                 setTimeout(() => {
-                    window.location.href = '/login.html';
+                    window.location.href = '/acceder.html';
                 }, 1000);
             }
         } catch (error) {
@@ -1040,7 +1040,7 @@ function cerrarSesion() {
             // Forzar cierre de sesión
             localStorage.clear();
             sessionStorage.clear();
-            window.location.href = '/login.html';
+            window.location.href = '/acceder.html';
         }
     }
 }
@@ -1160,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Verificar autenticación
     if (!auth || !auth.requireAuth()) {
-        window.location.href = '/login.html';
+        window.location.href = '/acceder.html';
         return;
     }
     
@@ -1168,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const user = auth.getUser();
     if (!user || user.tipo !== 'cliente') {
         console.error('❌ Acceso denegado - Solo para clientes');
-        window.location.href = '/login.html';
+        window.location.href = '/acceder.html';
         return;
     }
     

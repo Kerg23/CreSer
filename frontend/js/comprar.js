@@ -1,4 +1,4 @@
-// MANTENER todas las variables y funciones existentes
+// ============ CONFIGURACIÓN Y VARIABLES GLOBALES ============
 const precios = {
     'valoracion-individual': 100000,
     'evaluacion-sesion': 80000,
@@ -19,155 +19,473 @@ const nombres = {
     'orientacion-familiar': 'Orientación Familiar'
 };
 
+const servicioIdMap = {
+    'valoracion-individual': 3,
+    'evaluacion-sesion': 2,
+    'psicoterapia-individual': 1,
+    'pareja-valoracion': 4,
+    'pareja-regular': 4,
+    'talleres-grupales': 6,
+    'orientacion-familiar': 2
+};
+
 let carritoMultiple = {};
 let paqueteSeleccionado = null;
+let tipoSeleccion = null;
 
-// NUEVA FUNCIÓN: Inicialización para FastAPI
+// ============ INICIALIZACIÓN ============
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Inicializando sistema de compras reales...');
     inicializarSistemaCompras();
-    cargarInformacionQR();
-    mostrarPaquetesEspeciales();
 });
 
-// NUEVA FUNCIÓN: Cargar información de QR
-async function cargarInformacionQR() {
-    try {
-        const response = await apiRequest(CONFIG.ENDPOINTS.INFO_QR);
-        mostrarInformacionQR(response);
-    } catch (error) {
-        console.error('Error cargando información QR:', error);
-        // Mostrar información por defecto
-        mostrarInformacionQRPorDefecto();
+function inicializarSistemaCompras() {
+    configurarEventosFormulario();
+    preLlenarDatosUsuario();
+    configurarSelectorIndividual();
+    console.log('✅ Sistema de compras reales inicializado');
+}
+
+// ============ CONFIGURACIÓN DE EVENTOS ============
+function configurarEventosFormulario() {
+    const formPago = document.getElementById('form-pago-simbolico');
+    if (formPago) {
+        formPago.addEventListener('submit', procesarPagoReal);
     }
 }
 
-// NUEVA FUNCIÓN: Mostrar información QR
-function mostrarInformacionQR(info) {
-    const container = document.getElementById('info-qr');
-    if (!container) return;
-
-    container.innerHTML = `
-        <div class="qr-info">
-            <h3>💳 Información de Pago</h3>
-            <div class="banco-info">
-                <p><strong>Banco:</strong> ${info.banco}</p>
-                <p><strong>Titular:</strong> ${info.titular}</p>
-                <p><strong>Tipo de cuenta:</strong> ${info.tipo_cuenta}</p>
-                <p><strong>Número:</strong> ${info.numero_cuenta}</p>
-            </div>
-            <div class="instrucciones">
-                <h4>📋 Instrucciones:</h4>
-                <ol>
-                    ${info.instrucciones.map(inst => `<li>${inst}</li>`).join('')}
-                </ol>
-            </div>
-        </div>
-    `;
+// ============ PROCESAMIENTO DE PAGO REAL ============
+async function procesarPagoReal(event) {
+    event.preventDefault();
+    
+    console.log('💳 Procesando pago real...');
+    
+    if (!paqueteSeleccionado) {
+        mostrarMensaje('No hay ningún paquete seleccionado', 'error');
+        return;
+    }
+    
+    const formData = new FormData(event.target);
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    
+    // Validar formulario
+    if (!validarFormulario(formData)) {
+        return;
+    }
+    
+    // Deshabilitar botón y mostrar loading
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando Pago...';
+    
+    try {
+        // Paso 1: Crear/verificar usuario
+        const usuario = await crearOVerificarUsuario(formData);
+        console.log('✅ Usuario verificado/creado:', usuario);
+        
+        // Paso 2: Crear pago
+        const pago = await crearPago(formData, usuario.id);
+        console.log('✅ Pago creado:', pago);
+        
+        // Paso 3: Crear créditos
+        const creditos = await crearCreditos(usuario.id, pago.id);
+        console.log('✅ Créditos creados:', creditos);
+        
+        // Mostrar confirmación
+        mostrarConfirmacionReal(pago, creditos, usuario);
+        
+    } catch (error) {
+        console.error('❌ Error procesando pago:', error);
+        mostrarMensaje(`Error: ${error.message}`, 'error');
+    } finally {
+        // Restaurar botón
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fas fa-credit-card"></i> Procesar Pago';
+    }
 }
 
-// NUEVA FUNCIÓN: Información QR por defecto
-function mostrarInformacionQRPorDefecto() {
-    const container = document.getElementById('info-qr');
-    if (!container) return;
-
-    container.innerHTML = `
-        <div class="qr-info">
-            <h3>💳 Información de Pago</h3>
-            <div class="banco-info">
-                <p><strong>Banco:</strong> Bancolombia</p>
-                <p><strong>Titular:</strong> Diana Milena Rodríguez</p>
-                <p><strong>Tipo de cuenta:</strong> Ahorros</p>
-                <p><strong>Número:</strong> 123-456-789</p>
-            </div>
-            <div class="instrucciones">
-                <h4>📋 Instrucciones:</h4>
-                <ol>
-                    <li>Realiza la transferencia por el valor total</li>
-                    <li>Toma una foto del comprobante</li>
-                    <li>Sube el comprobante en este formulario</li>
-                    <li>Espera la confirmación por email</li>
-                </ol>
-            </div>
-        </div>
-    `;
-}
-
-// NUEVA FUNCIÓN: Mostrar paquetes especiales
-function mostrarPaquetesEspeciales() {
-    const container = document.getElementById('paquetes-container');
-    if (!container) return;
-
-    const paquetes = [
-        {
-            id: 'evaluacion_completa',
-            nombre: 'Evaluación Completa',
-            precio: 350000,
-            descripcion: 'Proceso completo de evaluación y diagnóstico',
-            incluye: ['1 Valoración Individual', '4 Sesiones de Evaluación'],
-            ahorro: 20000,
-            popular: true
-        },
-        {
-            id: 'psicoterapia_4',
-            nombre: 'Psicoterapia 4 Sesiones',
-            precio: 260000,
-            descripcion: 'Paquete de 4 sesiones de psicoterapia individual',
-            incluye: ['4 Sesiones de Psicoterapia Individual'],
-            ahorro: 20000
-        },
-        {
-            id: 'psicoterapia_8',
-            nombre: 'Psicoterapia 8 Sesiones',
-            precio: 500000,
-            descripcion: 'Paquete de 8 sesiones de psicoterapia individual',
-            incluye: ['8 Sesiones de Psicoterapia Individual'],
-            ahorro: 60000
+// ============ GESTIÓN DE USUARIOS ============
+async function crearOVerificarUsuario(formData) {
+    const email = formData.get('email');
+    
+    try {
+        // Intentar obtener usuario existente por email
+        console.log('🔍 Verificando si el usuario existe...');
+        
+        // Buscar usuario por email (endpoint que necesitamos crear)
+        const usuarioExistente = await buscarUsuarioPorEmail(email);
+        
+        if (usuarioExistente) {
+            console.log('✅ Usuario existente encontrado');
+            return usuarioExistente;
         }
-    ];
-
-    const paquetesHTML = paquetes.map(paquete => `
-        <div class="paquete-card ${paquete.popular ? 'popular' : ''}">
-            ${paquete.popular ? '<div class="badge-popular">Más Popular</div>' : ''}
-            <h3>${paquete.nombre}</h3>
-            <div class="precio">
-                <span class="precio-actual">${formatearPrecio(paquete.precio)}</span>
-                ${paquete.ahorro ? `<span class="ahorro">Ahorras ${formatearPrecio(paquete.ahorro)}</span>` : ''}
-            </div>
-            <p class="descripcion">${paquete.descripcion}</p>
-            <ul class="incluye">
-                ${paquete.incluye.map(item => `<li>✅ ${item}</li>`).join('')}
-            </ul>
-            <button onclick="seleccionarPaquete('${paquete.id}', '${paquete.nombre}', ${paquete.precio})" class="btn-primary">
-                Seleccionar Paquete
-            </button>
-        </div>
-    `).join('');
-
-    container.innerHTML = `
-        <h2>📦 Paquetes Especiales</h2>
-        <div class="paquetes-grid">
-            ${paquetesHTML}
-        </div>
-    `;
+        
+    } catch (error) {
+        console.log('ℹ️ Usuario no existe, creando nuevo...');
+    }
+    
+    // Crear nuevo usuario
+    const nuevoUsuario = await crearNuevoUsuario(formData);
+    return nuevoUsuario;
 }
 
-// NUEVA FUNCIÓN: Seleccionar paquete
-function seleccionarPaquete(id, nombre, precio) {
-    paqueteSeleccionado = {
-        id: id,
-        nombre: nombre,
-        precio: precio,
-        tipo: 'paquete'
+async function buscarUsuarioPorEmail(email) {
+    try {
+        // Este endpoint necesita ser creado en el backend
+        const response = await apiRequest(`/usuarios/buscar-por-email?email=${encodeURIComponent(email)}`);
+        return response;
+    } catch (error) {
+        if (error.message.includes('404')) {
+            return null; // Usuario no encontrado
+        }
+        throw error;
+    }
+}
+
+async function crearNuevoUsuario(formData) {
+    const userData = {
+        nombre: formData.get('nombre'),
+        email: formData.get('email'),
+        telefono: formData.get('telefono'),
+        documento: formData.get('documento'),
+        password: generarPasswordTemporal(),
+        tipo: 'cliente',
+        estado: 'activo'
     };
     
-    // Limpiar carrito múltiple
-    carritoMultiple = {};
+    console.log('📤 Creando nuevo usuario:', userData);
     
-    actualizarResumenCompra();
-    mostrarMensaje(`Paquete "${nombre}" seleccionado`, 'success');
+    const response = await apiRequest('/usuarios/', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+    });
+    
+    return response;
 }
 
-// MANTENER función existente con mejoras
+function generarPasswordTemporal() {
+    // Generar password temporal de 8 caracteres
+    return Math.random().toString(36).slice(-8);
+}
+
+// ============ GESTIÓN DE PAGOS ============
+async function crearPago(formData, usuarioId) {
+    const pagoData = {
+        usuario_id: usuarioId,
+        nombre_pagador: formData.get('nombre'),
+        email_pagador: formData.get('email'),
+        telefono_pagador: formData.get('telefono'),
+        documento_pagador: formData.get('documento'),
+        monto: paqueteSeleccionado.precio,
+        concepto: generarConcepto(),
+        metodo_pago: 'qr', // Por defecto QR
+        tipo_compra: paqueteSeleccionado.tipo === 'paquete' ? 'paquete' : 'servicio_individual'
+    };
+    
+    console.log('📤 Creando pago:', pagoData);
+    
+    const response = await apiRequest('/pagos/', {
+        method: 'POST',
+        body: JSON.stringify(pagoData)
+    });
+    
+    return response;
+}
+
+// ============ GESTIÓN DE CRÉDITOS ============
+async function crearCreditos(usuarioId, pagoId) {
+    const creditosACrear = calcularCreditosACrear();
+    const creditosCreados = [];
+    
+    console.log('💳 Creando créditos para usuario:', usuarioId);
+    
+    for (const credito of creditosACrear) {
+        try {
+            const creditoData = {
+                usuario_id: usuarioId,
+                servicio_id: credito.servicio_id,
+                cantidad_inicial: credito.cantidad,
+                cantidad_disponible: credito.cantidad,
+                precio_unitario: credito.precio_unitario,
+                pago_id: pagoId,
+                estado: 'activo'
+            };
+            
+            console.log('📤 Creando crédito:', creditoData);
+            
+            const creditoCreado = await apiRequest('/creditos/', {
+                method: 'POST',
+                body: JSON.stringify(creditoData)
+            });
+            
+            creditosCreados.push(creditoCreado);
+            
+        } catch (error) {
+            console.error('❌ Error creando crédito:', error);
+            // Continuar con los otros créditos
+        }
+    }
+    
+    return creditosCreados;
+}
+
+function calcularCreditosACrear() {
+    let creditos = [];
+    
+    if (paqueteSeleccionado.tipo === 'individual') {
+        creditos.push({
+            servicio_id: servicioIdMap[paqueteSeleccionado.servicio],
+            cantidad: 1,
+            precio_unitario: paqueteSeleccionado.precio,
+            nombre: paqueteSeleccionado.nombre
+        });
+    } else if (paqueteSeleccionado.tipo === 'multiple') {
+        paqueteSeleccionado.servicios.forEach(servicio => {
+            creditos.push({
+                servicio_id: servicioIdMap[servicio.servicio],
+                cantidad: servicio.cantidad,
+                precio_unitario: servicio.precio,
+                nombre: servicio.nombre
+            });
+        });
+    } else if (paqueteSeleccionado.tipo === 'paquete') {
+        // Para paquetes especiales, crear créditos según el tipo
+        if (paqueteSeleccionado.id === 'psicoterapia-4') {
+            creditos.push({
+                servicio_id: servicioIdMap['psicoterapia-individual'],
+                cantidad: 4,
+                precio_unitario: paqueteSeleccionado.precio / 4,
+                nombre: 'Psicoterapia Individual'
+            });
+        } else if (paqueteSeleccionado.id === 'psicoterapia-8') {
+            creditos.push({
+                servicio_id: servicioIdMap['psicoterapia-individual'],
+                cantidad: 8,
+                precio_unitario: paqueteSeleccionado.precio / 8,
+                nombre: 'Psicoterapia Individual'
+            });
+        } else if (paqueteSeleccionado.id === 'evaluacion-completa') {
+            creditos.push({
+                servicio_id: servicioIdMap['evaluacion-sesion'],
+                cantidad: 5,
+                precio_unitario: paqueteSeleccionado.precio / 5,
+                nombre: 'Evaluación y Diagnóstico'
+            });
+        }
+    }
+    
+    return creditos;
+}
+
+// ============ CONFIRMACIÓN REAL ============
+function mostrarConfirmacionReal(pago, creditos, usuario) {
+    // Ocultar sección de pago
+    const seccionPago = document.getElementById('seccion-pago');
+    if (seccionPago) seccionPago.style.display = 'none';
+    
+    // Mostrar sección de confirmación
+    const confirmacion = document.getElementById('confirmacion');
+    if (confirmacion) {
+        confirmacion.style.display = 'block';
+        
+        // Actualizar contenido de confirmación
+        const successIcon = confirmacion.querySelector('.success-icon');
+        const titulo = confirmacion.querySelector('h2');
+        const descripcion = confirmacion.querySelector('p');
+        
+        if (successIcon) successIcon.textContent = '✅';
+        if (titulo) titulo.textContent = '¡Compra Exitosa!';
+        if (descripcion) descripcion.textContent = 'Tus créditos han sido añadidos a tu cuenta';
+        
+        // Llenar lista de créditos reales
+        const listaCreditosFinales = document.getElementById('lista-creditos-finales');
+        if (listaCreditosFinales && creditos) {
+            let creditosHTML = '';
+            creditos.forEach(credito => {
+                creditosHTML += `
+                    <div class="credito-final">
+                        <span class="credito-nombre">${credito.servicio_nombre || 'Servicio'}</span>
+                        <span class="credito-cantidad">${credito.cantidad_disponible} crédito${credito.cantidad_disponible > 1 ? 's' : ''}</span>
+                    </div>
+                `;
+            });
+            listaCreditosFinales.innerHTML = creditosHTML;
+        }
+        
+        // Actualizar información de cuenta
+        const infoCuenta = confirmacion.querySelector('.info-cuenta');
+        if (infoCuenta) {
+            infoCuenta.innerHTML = `
+                <h3>Información de tu Cuenta:</h3>
+                <p>📧 <strong>Email:</strong> ${usuario.email}</p>
+                <p>🔑 <strong>ID de Pago:</strong> #${pago.id}</p>
+                <p>💰 <strong>Monto Pagado:</strong> ${formatearPrecio(pago.monto)}</p>
+                <p>📅 Tus créditos están listos para usar</p>
+                <p>🎯 Puedes agendar tus citas cuando lo necesites</p>
+            `;
+        }
+        
+        confirmacion.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Limpiar selecciones
+    limpiarSelecciones();
+    
+    // Mostrar mensaje de éxito
+    mostrarMensaje('¡Pago procesado exitosamente! Créditos añadidos a tu cuenta.', 'success');
+}
+
+// ============ RESTO DE FUNCIONES (mantener las existentes) ============
+
+function configurarSelectorIndividual() {
+    const servicioIndividualSelect = document.getElementById('servicio-individual');
+    if (servicioIndividualSelect) {
+        servicioIndividualSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const precio = selectedOption.getAttribute('data-precio');
+            const btnIndividual = document.getElementById('btn-individual');
+            
+            if (precio) {
+                document.getElementById('precio-individual').textContent = formatearPrecio(parseInt(precio));
+                btnIndividual.disabled = false;
+            } else {
+                document.getElementById('precio-individual').textContent = 'Selecciona un servicio';
+                btnIndividual.disabled = true;
+            }
+        });
+    }
+}
+
+function preLlenarDatosUsuario() {
+    try {
+        if (typeof auth !== 'undefined' && auth && auth.isAuthenticated()) {
+            const user = auth.getUser();
+            const nombreInput = document.getElementById('nombre-completo');
+            const emailInput = document.getElementById('email');
+            const telefonoInput = document.getElementById('telefono');
+            const documentoInput = document.getElementById('documento');
+            
+            if (nombreInput && user.nombre) nombreInput.value = user.nombre;
+            if (emailInput && user.email) emailInput.value = user.email;
+            if (telefonoInput && user.telefono) telefonoInput.value = user.telefono;
+            if (documentoInput && user.documento) documentoInput.value = user.documento;
+            
+            console.log('✅ Datos de usuario pre-llenados');
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudieron pre-llenar los datos del usuario:', error);
+    }
+}
+
+function seleccionarPaquete(tipo) {
+    console.log('📦 Seleccionando paquete:', tipo);
+    
+    limpiarSelecciones();
+    tipoSeleccion = tipo;
+    
+    switch (tipo) {
+        case 'individual':
+            seleccionarIndividual();
+            break;
+        case 'multiple':
+            seleccionarMultiple();
+            break;
+        case 'evaluacion-completa':
+        case 'psicoterapia-4':
+        case 'psicoterapia-8':
+            seleccionarPaqueteEspecial(tipo);
+            break;
+    }
+    
+    actualizarResumenCompra();
+    mostrarSeccionPago();
+}
+
+function seleccionarIndividual() {
+    const servicioSelect = document.getElementById('servicio-individual');
+    const selectedOption = servicioSelect.options[servicioSelect.selectedIndex];
+    
+    if (!selectedOption.value) {
+        mostrarMensaje('Por favor selecciona un servicio', 'warning');
+        return;
+    }
+    
+    const precio = parseInt(selectedOption.getAttribute('data-precio'));
+    const servicio = selectedOption.value;
+    
+    paqueteSeleccionado = {
+        tipo: 'individual',
+        servicio: servicio,
+        nombre: nombres[servicio],
+        precio: precio,
+        cantidad: 1
+    };
+    
+    mostrarMensaje(`Servicio "${nombres[servicio]}" seleccionado`, 'success');
+}
+
+function seleccionarMultiple() {
+    if (Object.keys(carritoMultiple).length === 0) {
+        mostrarMensaje('Por favor selecciona al menos un servicio', 'warning');
+        return;
+    }
+    
+    let total = 0;
+    let servicios = [];
+    
+    Object.keys(carritoMultiple).forEach(servicio => {
+        const cantidad = carritoMultiple[servicio];
+        const precio = precios[servicio];
+        total += cantidad * precio;
+        servicios.push({
+            servicio: servicio,
+            nombre: nombres[servicio],
+            cantidad: cantidad,
+            precio: precio
+        });
+    });
+    
+    paqueteSeleccionado = {
+        tipo: 'multiple',
+        servicios: servicios,
+        precio: total,
+        nombre: 'Paquete Múltiple Personalizado'
+    };
+    
+    mostrarMensaje('Paquete múltiple seleccionado', 'success');
+}
+
+function seleccionarPaqueteEspecial(tipoPaquete) {
+    const paquetesEspeciales = {
+        'evaluacion-completa': {
+            nombre: 'Paquete Evaluación Completa',
+            precio: 370000,
+            servicios: [{ servicio: 'evaluacion-sesion', cantidad: 5 }]
+        },
+        'psicoterapia-4': {
+            nombre: 'Paquete Psicoterapia 4 Sesiones',
+            precio: 260000,
+            servicios: [{ servicio: 'psicoterapia-individual', cantidad: 4 }]
+        },
+        'psicoterapia-8': {
+            nombre: 'Paquete Psicoterapia 8 Sesiones',
+            precio: 500000,
+            servicios: [{ servicio: 'psicoterapia-individual', cantidad: 8 }]
+        }
+    };
+    
+    const paquete = paquetesEspeciales[tipoPaquete];
+    
+    paqueteSeleccionado = {
+        tipo: 'paquete',
+        id: tipoPaquete,
+        nombre: paquete.nombre,
+        precio: paquete.precio,
+        servicios: paquete.servicios
+    };
+    
+    mostrarMensaje(`${paquete.nombre} seleccionado`, 'success');
+}
+
 function cambiarCantidad(servicio, cambio) {
     const cantidadElement = document.getElementById(`qty-${servicio}`);
     let cantidad = parseInt(cantidadElement.textContent) + cambio;
@@ -183,16 +501,9 @@ function cambiarCantidad(servicio, cambio) {
         delete carritoMultiple[servicio];
     }
     
-    // Limpiar paquete seleccionado si hay servicios individuales
-    if (Object.keys(carritoMultiple).length > 0) {
-        paqueteSeleccionado = null;
-    }
-    
     actualizarPrecioMultiple();
-    actualizarResumenCompra();
 }
 
-// MANTENER función existente
 function actualizarPrecioMultiple() {
     let total = 0;
     let totalCreditos = 0;
@@ -204,7 +515,7 @@ function actualizarPrecioMultiple() {
         totalCreditos += cantidad;
     });
     
-    document.getElementById('precio-multiple').textContent = `${formatearPrecio(total)}`;
+    document.getElementById('precio-multiple').textContent = formatearPrecio(total);
     document.getElementById('creditos-total').textContent = `${totalCreditos} créditos`;
     
     const btnMultiple = document.getElementById('btn-multiple');
@@ -213,208 +524,193 @@ function actualizarPrecioMultiple() {
     }
 }
 
-// NUEVA FUNCIÓN: Actualizar resumen de compra
 function actualizarResumenCompra() {
-    const resumenContainer = document.getElementById('resumen-compra');
-    if (!resumenContainer) return;
-
+    const resumenServicios = document.getElementById('resumen-servicios');
+    const subtotalFinal = document.getElementById('subtotal-final');
+    const totalPagar = document.getElementById('total-pagar');
+    
+    if (!paqueteSeleccionado) return;
+    
     let resumenHTML = '';
-    let total = 0;
-
-    if (paqueteSeleccionado) {
+    let total = paqueteSeleccionado.precio;
+    
+    if (paqueteSeleccionado.tipo === 'individual') {
         resumenHTML = `
-            <h3>Resumen de Compra</h3>
             <div class="item-resumen">
                 <span>${paqueteSeleccionado.nombre}</span>
                 <span>${formatearPrecio(paqueteSeleccionado.precio)}</span>
             </div>
         `;
-        total = paqueteSeleccionado.precio;
-    } else if (Object.keys(carritoMultiple).length > 0) {
-        resumenHTML = '<h3>Resumen de Compra</h3>';
-        Object.keys(carritoMultiple).forEach(servicio => {
-            const cantidad = carritoMultiple[servicio];
-            const precio = precios[servicio];
-            const subtotal = cantidad * precio;
-            total += subtotal;
-            
+    } else if (paqueteSeleccionado.tipo === 'multiple') {
+        paqueteSeleccionado.servicios.forEach(servicio => {
+            const subtotal = servicio.cantidad * servicio.precio;
             resumenHTML += `
                 <div class="item-resumen">
-                    <span>${nombres[servicio]} (${cantidad})</span>
+                    <span>${servicio.nombre} (${servicio.cantidad})</span>
                     <span>${formatearPrecio(subtotal)}</span>
                 </div>
             `;
         });
-    }
-
-    if (total > 0) {
-        resumenHTML += `
-            <div class="total-resumen">
-                <strong>Total: ${formatearPrecio(total)}</strong>
+    } else if (paqueteSeleccionado.tipo === 'paquete') {
+        resumenHTML = `
+            <div class="item-resumen">
+                <span>${paqueteSeleccionado.nombre}</span>
+                <span>${formatearPrecio(paqueteSeleccionado.precio)}</span>
             </div>
         `;
     }
-
-    resumenContainer.innerHTML = resumenHTML;
+    
+    if (resumenServicios) resumenServicios.innerHTML = resumenHTML;
+    if (subtotalFinal) subtotalFinal.textContent = formatearPrecio(total);
+    if (totalPagar) totalPagar.textContent = formatearPrecio(total);
 }
 
-// NUEVA FUNCIÓN: Inicializar sistema de compras
-function inicializarSistemaCompras() {
-    // Configurar formulario de pago
-    const formPago = document.getElementById('form-pago');
-    if (formPago) {
-        formPago.addEventListener('submit', procesarPago);
-    }
-    
-    // Pre-llenar datos del usuario si está logueado
-    if (authManager.isAuthenticated()) {
-        const user = authManager.getUser();
-        const nombreInput = document.getElementById('nombre');
-        const emailInput = document.getElementById('email');
-        const telefonoInput = document.getElementById('telefono');
-        const documentoInput = document.getElementById('documento');
-        
-        if (nombreInput) nombreInput.value = user.nombre || '';
-        if (emailInput) emailInput.value = user.email || '';
-        if (telefonoInput) telefonoInput.value = user.telefono || '';
-        if (documentoInput) documentoInput.value = user.documento || '';
+function mostrarSeccionPago() {
+    const seccionPago = document.getElementById('seccion-pago');
+    if (seccionPago) {
+        seccionPago.style.display = 'block';
+        seccionPago.scrollIntoView({ behavior: 'smooth' });
     }
 }
 
-// NUEVA FUNCIÓN: Procesar pago
-async function procesarPago(event) {
-    event.preventDefault();
+function limpiarSelecciones() {
+    carritoMultiple = {};
+    paqueteSeleccionado = null;
+    tipoSeleccion = null;
     
-    const formData = new FormData(event.target);
-    const comprobante = formData.get('comprobante');
+    Object.keys(precios).forEach(servicio => {
+        const qtyElement = document.getElementById(`qty-${servicio}`);
+        if (qtyElement) qtyElement.textContent = '0';
+    });
     
-    // Validaciones
-    if (!comprobante || comprobante.size === 0) {
-        mostrarMensaje('Por favor, sube el comprobante de pago', 'error');
-        return;
-    }
-    
-    if (!paqueteSeleccionado && Object.keys(carritoMultiple).length === 0) {
-        mostrarMensaje('Selecciona al menos un servicio o paquete', 'error');
-        return;
-    }
-    
-    // Validar archivo
-    try {
-        validarArchivo(comprobante);
-    } catch (error) {
-        mostrarMensaje(error.message, 'error');
-        return;
-    }
-    
-    const submitButton = event.target.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    submitButton.textContent = 'Procesando pago...';
-    
-    try {
-        // Calcular total y preparar datos
-        let total = 0;
-        let concepto = '';
-        let tipoCompra = 'servicio_individual';
-        let paqueteSeleccionadoId = null;
+    actualizarPrecioMultiple();
+}
+
+function cancelarCompra() {
+    if (confirm('¿Estás seguro de que quieres cancelar la compra?')) {
+        limpiarSelecciones();
         
-        if (paqueteSeleccionado) {
-            total = paqueteSeleccionado.precio;
-            concepto = paqueteSeleccionado.nombre;
-            tipoCompra = 'paquete';
-            paqueteSeleccionadoId = paqueteSeleccionado.id;
-        } else {
-            Object.keys(carritoMultiple).forEach(servicio => {
-                const cantidad = carritoMultiple[servicio];
-                const precio = precios[servicio];
-                total += cantidad * precio;
-                concepto += `${nombres[servicio]} (${cantidad}), `;
-            });
-            concepto = concepto.slice(0, -2); // Remover última coma
-        }
+        const seccionPago = document.getElementById('seccion-pago');
+        if (seccionPago) seccionPago.style.display = 'none';
         
-        const pagoData = {
-            nombre: formData.get('nombre'),
-            email: formData.get('email'),
-            telefono: formData.get('telefono'),
-            documento: formData.get('documento'),
-            monto: total,
-            concepto: concepto,
-            tipo_compra: tipoCompra,
-            paquete_seleccionado: paqueteSeleccionadoId,
-            referencia_bancaria: formData.get('referencia') || null
-        };
-        
-        // Enviar al backend
-        const response = await uploadFile(CONFIG.ENDPOINTS.PROCESAR_PAGO, comprobante, pagoData);
-        
-        mostrarMensaje('¡Pago enviado exitosamente! Será revisado y aprobado en las próximas horas.', 'success');
-        
-        // Limpiar formulario y carrito
-        event.target.reset();
-        carritoMultiple = {};
-        paqueteSeleccionado = null;
-        actualizarPrecioMultiple();
-        actualizarResumenCompra();
-        
-        // Mostrar resumen del pago
-        mostrarResumenPago(response);
-        
-    } catch (error) {
-        console.error('Error procesando pago:', error);
-        mostrarMensaje(error.message || 'Error al procesar el pago', 'error');
-    } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Procesar Pago';
+        mostrarMensaje('Compra cancelada', 'info');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
 
-// NUEVA FUNCIÓN: Mostrar resumen del pago
-function mostrarResumenPago(pago) {
-    const resumen = `
-        <div class="resumen-pago">
-            <h3>✅ Pago Enviado Exitosamente</h3>
-            <div class="detalle-pago">
-                <p><strong>ID de Pago:</strong> #${pago.id}</p>
-                <p><strong>Monto:</strong> ${formatearPrecio(pago.monto)}</p>
-                <p><strong>Concepto:</strong> ${pago.concepto}</p>
-                <p><strong>Estado:</strong> Pendiente de aprobación</p>
-            </div>
-            <div class="siguiente-pasos">
-                <h4>📋 Próximos pasos:</h4>
-                <ol>
-                    <li>Tu pago será revisado por nuestro equipo</li>
-                    <li>Recibirás una confirmación por email</li>
-                    <li>Los créditos se asignarán automáticamente</li>
-                    <li>Podrás agendar tus citas</li>
-                </ol>
-            </div>
+function validarFormulario(formData) {
+    const nombre = formData.get('nombre');
+    const email = formData.get('email');
+    const telefono = formData.get('telefono');
+    const documento = formData.get('documento');
+    
+    if (!nombre || nombre.trim().length < 2) {
+        mostrarMensaje('El nombre debe tener al menos 2 caracteres', 'error');
+        return false;
+    }
+    
+    if (!email || !validarEmail(email)) {
+        mostrarMensaje('Por favor ingresa un email válido', 'error');
+        return false;
+    }
+    
+    if (!telefono || telefono.trim().length < 10) {
+        mostrarMensaje('El teléfono debe tener al menos 10 dígitos', 'error');
+        return false;
+    }
+    
+    if (!documento || documento.trim().length < 6) {
+        mostrarMensaje('El documento debe tener al menos 6 caracteres', 'error');
+        return false;
+    }
+    
+    if (!document.getElementById('acepto-terminos').checked) {
+        mostrarMensaje('Debes aceptar los términos y condiciones', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+function validarEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+function nuevaCompra() {
+    const confirmacion = document.getElementById('confirmacion');
+    if (confirmacion) confirmacion.style.display = 'none';
+    
+    const form = document.getElementById('form-pago-simbolico');
+    if (form) form.reset();
+    
+    preLlenarDatosUsuario();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    mostrarMensaje('¡Listo para una nueva compra!', 'info');
+}
+
+function generarConcepto() {
+    if (paqueteSeleccionado.tipo === 'individual') {
+        return `${paqueteSeleccionado.nombre} - Compra Individual`;
+    } else if (paqueteSeleccionado.tipo === 'multiple') {
+        return `Paquete Múltiple - ${paqueteSeleccionado.servicios.length} servicios`;
+    } else if (paqueteSeleccionado.tipo === 'paquete') {
+        return paqueteSeleccionado.nombre;
+    }
+    return 'Compra de Créditos CreSer';
+}
+
+function formatearPrecio(amount) {
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+    }).format(amount);
+}
+
+function mostrarMensaje(mensaje, tipo = 'info', duracion = 5000) {
+    let container = document.getElementById('mensajes-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'mensajes-container';
+        container.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            max-width: 400px;
+        `;
+        document.body.appendChild(container);
+    }
+
+    const mensajeElement = document.createElement('div');
+    mensajeElement.className = `mensaje mensaje-${tipo}`;
+    mensajeElement.style.cssText = `
+        background: ${tipo === 'success' ? '#d4edda' : tipo === 'error' ? '#f8d7da' : tipo === 'warning' ? '#fff3cd' : '#d1ecf1'};
+        color: ${tipo === 'success' ? '#155724' : tipo === 'error' ? '#721c24' : tipo === 'warning' ? '#856404' : '#0c5460'};
+        border: 1px solid ${tipo === 'success' ? '#c3e6cb' : tipo === 'error' ? '#f5c6cb' : tipo === 'warning' ? '#ffeaa7' : '#bee5eb'};
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease-out;
+    `;
+    mensajeElement.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>${mensaje}</span>
+            <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; font-size: 18px; cursor: pointer; color: inherit; margin-left: 10px;">&times;</button>
         </div>
     `;
-    
-    // Mostrar en modal o reemplazar contenido
-    mostrarMensaje(resumen, 'success');
+
+    container.appendChild(mensajeElement);
+
+    if (duracion > 0) {
+        setTimeout(() => {
+            if (mensajeElement.parentNode) {
+                mensajeElement.remove();
+            }
+        }, duracion);
+    }
 }
 
-// MANTENER todas las funciones existentes del código original
-// (Las funciones del manejo de selección de servicio individual, etc.)
-
-// Manejar selección de servicio individual (MANTENER)
-const servicioIndividualSelect = document.getElementById('servicio-individual');
-if (servicioIndividualSelect) {
-    servicioIndividualSelect.addEventListener('change', function() {
-        const selectedOption = this.options[this.selectedIndex];
-        const precio = selectedOption.getAttribute('data-precio');
-        const btnIndividual = document.getElementById('btn-individual');
-        
-        if (precio) {
-            document.getElementById('precio-individual').textContent = `${formatearPrecio(parseInt(precio))}`;
-            btnIndividual.disabled = false;
-        } else {
-            document.getElementById('precio-individual').textContent = 'Selecciona un servicio';
-            btnIndividual.disabled = true;
-        }
-    });
-}
-
-console.log('✅ Sistema de compras de CreSer cargado');
+console.log('✅ Sistema de compras reales de CreSer cargado');

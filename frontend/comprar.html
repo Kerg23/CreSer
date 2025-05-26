@@ -5,25 +5,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comprar Créditos - CreSer</title>
-    <link rel="stylesheet" href="css/estilos-comprar.css">
-    <link rel="stylesheet" href="css/estilos-navbar.css">
+    <link rel="stylesheet" href="/css/estilos-comprar.css">
+    <link rel="stylesheet" href="/css/estilos-navbar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
+    <!-- HEADER ADAPTATIVO -->
     <header>
         <div class="navbar">
             <div class="logo">
-                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1">
-                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2">
+                <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
+                <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
             </div>
             <nav class="menu">
                 <a href="index.html">Inicio</a>
                 <a href="servicios.html">Servicios</a>
                 <a href="comprar.html" class="activo">Comprar</a>
                 <a href="noticias.html">Noticias</a>
-                <div class="boton-acceder">
-                    <a href="acceder.html">Acceder</a>
+                
+                <!-- NAVEGACIÓN ADAPTATIVA -->
+                <div id="nav-auth-container">
+                    <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="boton-acceder">
+                        <a href="acceder.html">
+                            <i class="fas fa-sign-in-alt"></i> Acceder
+                        </a>
+                    </div>
                 </div>
             </nav>
         </div>
@@ -313,7 +322,7 @@
             </div>
         </section>
 
-        <!-- Formulario de Pago -->
+        <!-- Formulario de Pago Simbólico -->
         <section class="seccion-pago" id="seccion-pago" style="display: none;">
             <div class="container">
                 <div class="pago-layout">
@@ -339,257 +348,102 @@
                         </div>
                     </div>
 
-                    <!-- Datos del Cliente y Pago -->
+                    <!-- Datos del Cliente y Pago Simbólico -->
                     <div class="formulario-pago">
                         <h3>Información Personal y Pago</h3>
 
-                        <!-- Datos Personales -->
-                        <div class="datos-personales">
-                            <h4>Datos Personales</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="nombre-completo">Nombre completo:</label>
-                                    <input type="text" id="nombre-completo" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="email">Correo electrónico:</label>
-                                    <input type="email" id="email" required>
-                                </div>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="telefono">Teléfono:</label>
-                                    <input type="tel" id="telefono" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="documento">Documento de identidad:</label>
-                                    <input type="text" id="documento" required>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Método de Pago -->
-                        <div class="metodo-pago">
-                            <h4>Método de Pago</h4>
-                            <div class="payment-options">
-                                <label class="payment-option">
-                                    <input type="radio" name="metodo-pago" value="tarjeta" checked
-                                        onchange="cambiarMetodoPago('tarjeta')">
-                                    <div class="option-content">
-                                        <span>💳 Tarjeta de Crédito/Débito</span>
+                        <form id="form-pago-simbolico">
+                            <!-- Datos Personales -->
+                            <div class="datos-personales">
+                                <h4>Datos Personales</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="nombre-completo">Nombre completo:</label>
+                                        <input type="text" id="nombre-completo" name="nombre" required>
                                     </div>
-                                </label>
-                                <label class="payment-option">
-                                    <input type="radio" name="metodo-pago" value="qr"
-                                        onchange="cambiarMetodoPago('qr')">
-                                    <div class="option-content">
-                                        <span>📱 Código QR</span>
-                                    </div>
-                                </label>
-                                <label class="payment-option">
-                                    <input type="radio" name="metodo-pago" value="pse"
-                                        onchange="cambiarMetodoPago('pse')">
-                                    <div class="option-content">
-                                        <span>🏦 PSE - Débito a Cuenta</span>
-                                    </div>
-                                </label>
-                            </div>
-
-                            <!-- Formulario de Tarjeta -->
-                            <div class="payment-form" id="tarjeta-form">
-                                <h5>Información de la Tarjeta</h5>
-                                <div class="form-group">
-                                    <label for="numero-tarjeta">Número de Tarjeta:</label>
-                                    <input type="text" id="numero-tarjeta" placeholder="1234 5678 9012 3456"
-                                        maxlength="19">
-                                    <div class="card-icons">
-                                        <span class="card-icon visa">VISA</span>
-                                        <span class="card-icon mastercard">MC</span>
-                                        <span class="card-icon amex">AMEX</span>
+                                    <div class="form-group">
+                                        <label for="email">Correo electrónico:</label>
+                                        <input type="email" id="email" name="email" required>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="vencimiento">Vencimiento:</label>
-                                        <input type="text" id="vencimiento" placeholder="MM/AA" maxlength="5">
+                                        <label for="telefono">Teléfono:</label>
+                                        <input type="tel" id="telefono" name="telefono" required>
                                     </div>
                                     <div class="form-group">
-                                        <label for="cvv">CVV:</label>
-                                        <input type="text" id="cvv" placeholder="123" maxlength="4">
-                                        <div class="cvv-help">
-                                            <span class="tooltip">?</span>
-                                            <div class="tooltip-content">Código de 3 o 4 dígitos en el reverso de tu
-                                                tarjeta</div>
-                                        </div>
+                                        <label for="documento">Documento de identidad:</label>
+                                        <input type="text" id="documento" name="documento" required>
                                     </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="nombre-tarjeta">Nombre en la Tarjeta:</label>
-                                    <input type="text" id="nombre-tarjeta" placeholder="Como aparece en la tarjeta">
-                                </div>
-                                <div class="form-group">
-                                    <label for="tipo-documento-tarjeta">Tipo de Documento:</label>
-                                    <select id="tipo-documento-tarjeta">
-                                        <option value="cc">Cédula de Ciudadanía</option>
-                                        <option value="ce">Cédula de Extranjería</option>
-                                        <option value="passport">Pasaporte</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="documento-tarjeta">Número de Documento:</label>
-                                    <input type="text" id="documento-tarjeta"
-                                        placeholder="Número de documento del titular">
                                 </div>
                             </div>
 
-                            <!-- Formulario de QR -->
-                            <!-- Formulario de QR -->
-                            <div class="payment-form" id="qr-form" style="display: none;">
-                                <h5>Pago con Código QR</h5>
-                                <div class="qr-container">
-                                    <div class="qr-instructions">
-                                        <p><strong>Instrucciones para pagar:</strong></p>
-                                        <ol>
-                                            <li>Abre tu aplicación de banca móvil o billetera digital</li>
-                                            <li>Selecciona la opción "Pagar con QR" o "Escanear QR"</li>
-                                            <li>Escanea el código QR que aparece a continuación</li>
-                                            <li>Ingresa el monto exacto: <strong><span
-                                                        id="qr-amount-display">$0</span></strong></li>
-                                            <li>Confirma el pago y toma captura de pantalla del comprobante</li>
-                                        </ol>
-                                        <div class="qr-note">
-                                            <p><strong>Importante:</strong> Después de realizar el pago, adjunta el
-                                                comprobante en el campo de abajo para verificar tu transacción.</p>
-                                        </div>
-                                    </div>
-                                    <div class="qr-code-section">
-                                        <div class="qr-code-container">
-                                            <!-- Aquí colocas tu imagen QR -->
-                                            <img src="recursos/qr.jpg" alt="Código QR CreSer" class="qr-image">
-                                        </div>
-                                        <div class="qr-info">
-                                            <p><strong>Monto a pagar:</strong> <span id="qr-amount">$0</span></p>
-                                            <p><strong>Cuenta:</strong> CreSer Centro Terapéutico</p>
-                                            <p><strong>Concepto:</strong> Compra de créditos de servicios</p>
-                                        </div>
+                            <!-- Pago Simbólico -->
+                            <div class="pago-simbolico">
+                                <h4>💳 Pago Simbólico (Demo)</h4>
+                                <div class="demo-notice">
+                                    <div class="notice-content">
+                                        <i class="fas fa-info-circle"></i>
+                                        <p><strong>Modo Demo:</strong> Este es un pago simbólico para demostración. 
+                                        No se realizará ningún cargo real a tu tarjeta.</p>
                                     </div>
                                 </div>
+                                
+                                <div class="metodo-pago-demo">
+                                    <label class="payment-option selected">
+                                        <input type="radio" name="metodo-pago" value="demo" checked>
+                                        <div class="option-content">
+                                            <span>🎭 Pago Simbólico (Demo)</span>
+                                            <small>Simula el proceso de compra sin cargos reales</small>
+                                        </div>
+                                    </label>
+                                </div>
 
-                                <!-- Campo para subir comprobante -->
-                                <div class="comprobante-section">
-                                    <h6>Adjuntar Comprobante de Pago</h6>
+                                <div class="simulacion-pago">
+                                    <h5>Simular Datos de Tarjeta</h5>
                                     <div class="form-group">
-                                        <label for="comprobante-pago">Sube una foto o captura del comprobante:</label>
-                                        <input type="file" id="comprobante-pago" accept="image/*,.pdf" required>
-                                        <div class="file-help">
-                                            <small>Formatos aceptados: JPG, PNG, PDF. Tamaño máximo: 5MB</small>
+                                        <label for="numero-tarjeta-demo">Número de Tarjeta (Demo):</label>
+                                        <input type="text" id="numero-tarjeta-demo" placeholder="4111 1111 1111 1111" 
+                                               value="4111 1111 1111 1111" readonly>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="vencimiento-demo">Vencimiento:</label>
+                                            <input type="text" id="vencimiento-demo" placeholder="12/25" 
+                                                   value="12/25" readonly>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cvv-demo">CVV:</label>
+                                            <input type="text" id="cvv-demo" placeholder="123" 
+                                                   value="123" readonly>
                                         </div>
                                     </div>
-                                    <div class="preview-comprobante" id="preview-comprobante" style="display: none;">
-                                        <p>Vista previa del comprobante:</p>
-                                        <img id="preview-image" src="" alt="Vista previa"
-                                            style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid #ddd;">
-                                    </div>
-                                </div>
-
-                                <div class="qr-apps">
-                                    <p>Aplicaciones compatibles:</p>
-                                    <div class="app-icons">
-                                        <img src="recursos/icons/nequi.png" alt="Nequi" class="app-icon">
-                                        <img src="recursos/icons/daviplata.png" alt="Daviplata" class="app-icon">
-                                        <img src="recursos/icons/bancolombia.png" alt="Bancolombia" class="app-icon">
-                                        <img src="recursos/icons/bbva.png" alt="BBVA" class="app-icon">
+                                    <div class="form-group">
+                                        <label for="nombre-tarjeta-demo">Nombre en la Tarjeta:</label>
+                                        <input type="text" id="nombre-tarjeta-demo" placeholder="DEMO USER" 
+                                               value="DEMO USER" readonly>
                                     </div>
                                 </div>
                             </div>
 
-
-                            <!-- Formulario de PSE -->
-                            <div class="payment-form" id="pse-form" style="display: none;">
-                                <h5>PSE - Débito a Cuenta</h5>
-                                <div class="form-group">
-                                    <label for="tipo-persona">Tipo de Persona:</label>
-                                    <select id="tipo-persona" onchange="actualizarTipoDocumento()">
-                                        <option value="natural">Persona Natural</option>
-                                        <option value="juridica">Persona Jurídica</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="tipo-documento-pse">Tipo de Documento:</label>
-                                    <select id="tipo-documento-pse">
-                                        <option value="cc">Cédula de Ciudadanía</option>
-                                        <option value="ce">Cédula de Extranjería</option>
-                                        <option value="passport">Pasaporte</option>
-                                        <option value="nit" style="display: none;">NIT</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="documento-pse">Número de Documento:</label>
-                                    <input type="text" id="documento-pse" placeholder="Número de documento" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="banco-pse">Selecciona tu Banco:</label>
-                                    <select id="banco-pse" required>
-                                        <option value="">Selecciona tu banco</option>
-                                        <option value="1007">Bancolombia</option>
-                                        <option value="1019">Scotiabank Colpatria</option>
-                                        <option value="1507">NEQUI</option>
-                                        <option value="1001">Banco de Bogotá</option>
-                                        <option value="1023">Banco de Occidente</option>
-                                        <option value="1062">Banco Falabella</option>
-                                        <option value="1012">Banco GNB Sudameris</option>
-                                        <option value="1060">Banco Pichincha</option>
-                                        <option value="1002">Banco Popular</option>
-                                        <option value="1058">Banco Procredit</option>
-                                        <option value="1010">Banco Santander</option>
-                                        <option value="1065">Banco Santander de Negocios Colombia</option>
-                                        <option value="1066">Banco Serfinanza</option>
-                                        <option value="1051">BBVA Colombia</option>
-                                        <option value="1032">Caja Social</option>
-                                        <option value="1292">Confiar Cooperativa Financiera</option>
-                                        <option value="1069">Coofinep Cooperativa Financiera</option>
-                                        <option value="1370">Coomeva</option>
-                                        <option value="1013">Citibank</option>
-                                        <option value="1009">Citibank Colombia</option>
-                                        <option value="1006">Corpbanca</option>
-                                        <option value="1018">HSBC Colombia</option>
-                                        <option value="1637">Iris</option>
-                                        <option value="1052">Lulo Bank</option>
-                                    </select>
-                                </div>
-                                <div class="pse-info">
-                                    <div class="info-item">
-                                        <span class="info-icon">🔒</span>
-                                        <p>Tu transacción será procesada de forma segura a través del sistema PSE</p>
-                                    </div>
-                                    <div class="info-item">
-                                        <span class="info-icon">⏱️</span>
-                                        <p>El débito se realizará inmediatamente desde tu cuenta bancaria</p>
-                                    </div>
-                                    <div class="info-item">
-                                        <span class="info-icon">📱</span>
-                                        <p>Necesitarás tus credenciales de banca en línea</p>
-                                    </div>
-                                </div>
+                            <!-- Términos y Condiciones -->
+                            <div class="terminos">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="acepto-terminos" required>
+                                    <span class="checkmark"></span>
+                                    Acepto los <a href="#" target="_blank">términos y condiciones</a> y autorizo el
+                                    procesamiento de mis datos (Demo)
+                                </label>
                             </div>
-                        </div>
 
-
-                        <!-- Términos y Condiciones -->
-                        <div class="terminos">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="acepto-terminos" required>
-                                <span class="checkmark"></span>
-                                Acepto los <a href="#" target="_blank">términos y condiciones</a> y autorizo el
-                                procesamiento de mis datos
-                            </label>
-                        </div>
-
-                        <!-- Botones -->
-                        <div class="botones-pago">
-                            <button type="button" class="btn-cancelar" onclick="cancelarCompra()">Cancelar</button>
-                            <button type="button" class="btn-pagar" onclick="procesarPago()">Procesar Pago</button>
-                        </div>
+                            <!-- Botones -->
+                            <div class="botones-pago">
+                                <button type="button" class="btn-cancelar" onclick="cancelarCompra()">Cancelar</button>
+                                <button type="submit" class="btn-pagar">
+                                    <i class="fas fa-credit-card"></i> Procesar Pago Simbólico
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -600,8 +454,8 @@
             <div class="container">
                 <div class="confirmacion-card">
                     <div class="success-icon">✅</div>
-                    <h2>¡Compra Exitosa!</h2>
-                    <p>Tus créditos han sido añadidos a tu cuenta</p>
+                    <h2>¡Compra Simbólica Exitosa!</h2>
+                    <p>Tus créditos han sido añadidos a tu cuenta (Demo)</p>
 
                     <div class="creditos-obtenidos">
                         <h3>Créditos Obtenidos:</h3>
@@ -612,14 +466,16 @@
 
                     <div class="info-cuenta">
                         <h3>Información de tu Cuenta:</h3>
-                        <p>📧 Te hemos enviado un correo con tus credenciales de acceso</p>
+                        <p>📧 En un entorno real, recibirías un correo con confirmación</p>
                         <p>🔑 Podrás iniciar sesión y agendar tus citas cuando lo necesites</p>
                         <p>📅 Tus créditos no tienen fecha de vencimiento</p>
+                        <p>🎭 <strong>Nota:</strong> Esta es una demostración, no se realizó ningún cargo real</p>
                     </div>
 
                     <div class="acciones-finales">
                         <a href="acceder.html" class="btn-iniciar-sesion">Iniciar Sesión</a>
                         <a href="agendar-cita.html" class="btn-agendar-ahora">Agendar Cita Ahora</a>
+                        <button onclick="nuevaCompra()" class="btn-nueva-compra">Nueva Compra</button>
                     </div>
                 </div>
             </div>
@@ -628,7 +484,7 @@
 
     <footer class="footer">
         <div class="footer-info">
-            <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer">
+            <img src="recursos/logo2.png" alt="CreSer Logo" id="logo-footer" onerror="this.style.display='none'">
             <h3>Ubicación</h3>
             <p>Calle Principal #123, Ibagué, Colombia</p>
             <h4>Síguenos</h4>
@@ -652,7 +508,11 @@
         </div>
     </footer>
 
-    <script src="js/comprar.js"></script>
+    <!-- Scripts -->
+    <script defer src="/js/config.js"></script>
+    <script defer src="/js/auth.js"></script>
+    <script defer src="/frontend/js/header-adaptativo.js"></script>
+    <script defer src="/js/comprar.js"></script>
 </body>
 
 </html>

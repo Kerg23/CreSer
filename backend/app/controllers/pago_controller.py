@@ -132,6 +132,37 @@ async def obtener_estadisticas_pagos(
         logger.error(f"Error obteniendo estadísticas de pagos: {e}")
         raise HTTPException(status_code=500, detail="Error obteniendo estadísticas")
 
+# CORREGIDO: Endpoint /mis-pagos ANTES de los endpoints con parámetros
+@router.get("/mis-pagos")
+async def obtener_mis_pagos(
+    current_user: Usuario = Depends(get_current_active_user),  # ✅ CORRECTO: get_current_active_user
+    db: Session = Depends(get_db)
+):
+    """Obtener pagos del usuario autenticado"""
+    try:
+        logger.info(f"Obteniendo pagos del usuario {current_user.id}")
+        
+        # Buscar pagos por usuario_id o por email del pagador
+        pagos = db.query(Pago).filter(
+            or_(
+                Pago.usuario_id == current_user.id,
+                Pago.email_pagador == current_user.email
+            )
+        ).order_by(Pago.created_at.desc()).all()
+        
+        logger.info(f"Encontrados {len(pagos)} pagos para el usuario {current_user.id}")
+        
+        pagos_response = []
+        for pago in pagos:
+            pago_dict = pago.to_dict()
+            pagos_response.append(pago_dict)
+        
+        return pagos_response
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo pagos del usuario {current_user.id}: {e}")
+        raise HTTPException(status_code=500, detail="Error obteniendo pagos")
+
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def crear_pago(
     pago_data: dict,

@@ -153,7 +153,7 @@ async function apiRequest(endpoint, options = {}) {
                 console.warn('Token expirado o inválido, redirigiendo a login...');
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
-                window.location.href = '/login.html';
+                window.location.href = '/acceder.html';
                 return;
             }
 
