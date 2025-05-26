@@ -1,6 +1,6 @@
 // Configuración global de la aplicación CreSer
 const CONFIG = {
-    API_BASE_URL: 'https://animal-sometimes-encryption-cleaning.trycloudflare.com/api',
+    API_BASE_URL: 'https://reason-roommate-awesome-rebates.trycloudflare.com/api',
     ENDPOINTS: {
         // Autenticación
         LOGIN: '/auth/login',
