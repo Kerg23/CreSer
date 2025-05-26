@@ -32,6 +32,9 @@ class Pago(Base):
     # CORREGIDO: Relaciones SIN back_populates para evitar errores
     usuario = relationship("Usuario", foreign_keys=[usuario_id], lazy="select")
     aprobador = relationship("Usuario", foreign_keys=[aprobado_por], lazy="select")
+    # Agregar esta línea en la clase Pago
+    creditos = relationship("Credito", back_populates="pago")
+
     
     def to_dict(self):
         """Convertir modelo a diccionario - CORREGIDO"""

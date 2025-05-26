@@ -1,14 +1,14 @@
 // ============ CONFIGURACIÓN Y VARIABLES GLOBALES ============
 let serviciosDisponibles = [];
-let creditosUsuario = [];
 let usuarioActual = null;
 
 // ============ INICIALIZACIÓN ============
 document.addEventListener("DOMContentLoaded", async () => {
-    console.log('🚀 Inicializando sistema de agendamiento...');
+    // Evitar inicialización múltiple
+    if (window.sistemaInicializado) return;
+    window.sistemaInicializado = true;
     
-    // AGREGADO: Configurar header adaptativo
-    configurarHeaderAdaptativo();
+    console.log('🚀 Inicializando sistema de agendamiento...');
     
     // Verificar autenticación
     if (!auth || !auth.requireAuth()) {
@@ -26,13 +26,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     usuarioActual = user;
     
-    // CORREGIDO: Cargar servicios PRIMERO, luego créditos
     try {
         console.log('🔄 Cargando servicios disponibles...');
         await cargarServiciosDisponibles();
-        
-        console.log('🔄 Cargando créditos del usuario...');
-        await cargarCreditosUsuario();
         
         // Configurar eventos después de cargar datos
         configurarEventos();
@@ -45,100 +41,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         mostrarMensaje('Error inicializando el sistema. Por favor, recarga la página.', 'error');
     }
 });
-
-// ============ GESTIÓN DE HEADER ADAPTATIVO ============
-
-function configurarHeaderAdaptativo() {
-    const navContainer = document.getElementById('nav-auth-container');
-    if (!navContainer) return;
-
-    // Verificar si hay sesión activa
-    const isLoggedIn = auth && auth.isAuthenticated();
-    const user = isLoggedIn ? auth.getUser() : null;
-
-    if (isLoggedIn && user) {
-        // Usuario logueado - mostrar menú de perfil
-        navContainer.innerHTML = `
-            <div class="user-menu">
-                <div class="user-info">
-                    <img src="${user.avatar || 'recursos/avatar-default.png'}" 
-                         alt="Avatar" 
-                         class="user-avatar"
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjNGVjM2IxIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyOCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE2IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VTwvdGV4dD4KPHN2Zz4='">
-                    <span class="user-name">${user.nombre || 'Usuario'}</span>
-                    <i class="fas fa-chevron-down"></i>
-                </div>
-                <div class="dropdown-menu">
-                    <a href="perfil-cliente.html" class="dropdown-item">
-                        <i class="fas fa-user"></i> Mi Perfil
-                    </a>
-                    <a href="agendar-cita.html" class="dropdown-item active">
-                        <i class="fas fa-calendar-plus"></i> Agendar Cita
-                    </a>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" onclick="cerrarSesionHeader()" class="dropdown-item logout">
-                        <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                    </a>
-                </div>
-            </div>
-        `;
-
-        // Configurar dropdown
-        configurarDropdownUsuario();
-    } else {
-        // Usuario no logueado - mostrar botón de acceder
-        navContainer.innerHTML = `
-            <div class="boton-acceder">
-                <a href="acceder.html" class="btn-acceder">
-                    <i class="fas fa-sign-in-alt"></i> Acceder
-                </a>
-            </div>
-        `;
-    }
-}
-
-function configurarDropdownUsuario() {
-    const userMenu = document.querySelector('.user-menu');
-    const userInfo = document.querySelector('.user-info');
-    const dropdownMenu = document.querySelector('.dropdown-menu');
-
-    if (userInfo && dropdownMenu) {
-        userInfo.addEventListener('click', (e) => {
-            e.stopPropagation();
-            dropdownMenu.classList.toggle('show');
-        });
-
-        // Cerrar dropdown al hacer clic fuera
-        document.addEventListener('click', (e) => {
-            if (!userMenu.contains(e.target)) {
-                dropdownMenu.classList.remove('show');
-            }
-        });
-    }
-}
-
-function cerrarSesionHeader() {
-    if (confirm('¿Estás seguro de que quieres cerrar la sesión?')) {
-        console.log('🚪 Cerrando sesión desde header...');
-        
-        try {
-            if (auth && auth.logout) {
-                auth.logout();
-            } else {
-                // Fallback manual
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                sessionStorage.clear();
-                window.location.href = '/login.html';
-            }
-        } catch (error) {
-            console.error('Error cerrando sesión:', error);
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = '/login.html';
-        }
-    }
-}
 
 // ============ CARGA DE DATOS ============
 
@@ -155,6 +57,9 @@ async function cargarServiciosDisponibles() {
         } else {
             throw new Error('Respuesta vacía o inválida');
         }
+        
+        // Actualizar selector sin validar créditos
+        actualizarSelectorServicios();
         
     } catch (error) {
         console.error('❌ Error cargando servicios desde API:', error);
@@ -197,73 +102,26 @@ async function cargarServiciosDisponibles() {
         
         console.log('✅ Usando servicios fallback:', serviciosDisponibles.length);
         mostrarMensaje('Usando servicios predeterminados', 'warning');
+        
+        // Actualizar selector sin validar créditos
+        actualizarSelectorServicios();
     }
 }
 
-async function cargarCreditosUsuario() {
-    try {
-        console.log('🔄 Cargando créditos del usuario...');
-        
-        const response = await apiRequest('/usuarios/creditos');
-        creditosUsuario = response || [];
-        
-        console.log('✅ Créditos cargados:', creditosUsuario);
-        
-        // Actualizar UI
-        mostrarCreditosDisponibles(creditosUsuario);
-        actualizarSelectorServicios(creditosUsuario);
-        
-    } catch (error) {
-        console.error('❌ Error cargando créditos:', error);
-        creditosUsuario = [];
-        mostrarMensajeSinCreditos();
-        deshabilitarFormulario();
-    }
-}
+// ============ ACTUALIZACIÓN DE UI SIN VALIDACIÓN DE CRÉDITOS ============
 
-// ============ ACTUALIZACIÓN DE UI ============
-
-function mostrarCreditosDisponibles(creditos) {
-    const container = document.getElementById('creditos-disponibles');
-    if (!container) return;
-
-    if (creditos.length === 0) {
-        container.innerHTML = `
-            <div class="sin-creditos-info">
-                <i class="fas fa-info-circle"></i>
-                <span>No tienes créditos disponibles. <a href="comprar.html">Comprar créditos</a></span>
-            </div>
-        `;
-        return;
-    }
-
-    const totalCreditos = creditos.reduce((sum, c) => sum + (c.cantidad_disponible || 0), 0);
-    
-    const creditosHTML = creditos.map(credito => `
-        <div class="credito-disponible">
-            <span class="servicio-nombre">${credito.servicio_nombre}</span>
-            <span class="cantidad">${credito.cantidad_disponible} disponibles</span>
-        </div>
-    `).join('');
-
-    container.innerHTML = `
-        <div class="creditos-header">
-            <i class="fas fa-credit-card"></i>
-            <span>Tienes ${totalCreditos} créditos disponibles</span>
-        </div>
-        <div class="creditos-detalle">
-            ${creditosHTML}
-        </div>
-    `;
-}
-
-function actualizarSelectorServicios(creditos) {
+function actualizarSelectorServicios() {
     const selector = document.getElementById('servicio');
     
-    // CORREGIDO: Primero cargar TODOS los servicios disponibles
+    if (!selector) {
+        console.error('❌ No se encontró el selector de servicios');
+        return;
+    }
+    
+    // Limpiar selector
     selector.innerHTML = '<option value="">Selecciona un servicio</option>';
     
-    // Si no hay servicios cargados, cargarlos primero
+    // Si no hay servicios cargados, mostrar error
     if (serviciosDisponibles.length === 0) {
         console.warn('⚠️ No hay servicios disponibles cargados');
         selector.innerHTML = '<option value="">Error: No se pudieron cargar los servicios</option>';
@@ -271,97 +129,20 @@ function actualizarSelectorServicios(creditos) {
     }
     
     console.log('🔍 DEBUG serviciosDisponibles:', serviciosDisponibles);
-    console.log('🔍 DEBUG creditos:', creditos);
     
-    // Si no hay créditos, mostrar todos los servicios pero deshabilitados
-    if (!creditos || creditos.length === 0) {
-        serviciosDisponibles.forEach(servicio => {
-            const option = document.createElement('option');
-            option.value = servicio.id;
-            option.textContent = `${servicio.nombre} (Sin créditos disponibles)`;
-            option.disabled = true;
-            selector.appendChild(option);
-        });
-        selector.disabled = true;
-        return;
-    }
-
-    // CORREGIDO: Crear mapa de servicios con créditos
-    const serviciosConCreditos = new Map();
-    
-    creditos.forEach(credito => {
-        if (credito.cantidad_disponible > 0) {
-            serviciosConCreditos.set(credito.servicio_id, credito);
-        }
-    });
-    
-    console.log('🔍 DEBUG serviciosConCreditos:', serviciosConCreditos);
-    
-    // Agrupar servicios por categoría
-    const serviciosPorCategoria = {};
-    
+    // Mostrar todos los servicios sin validar créditos
     serviciosDisponibles.forEach(servicio => {
-        const categoria = servicio.categoria || 'Otros';
-        
-        if (!serviciosPorCategoria[categoria]) {
-            serviciosPorCategoria[categoria] = [];
-        }
-        
-        // Verificar si tiene créditos disponibles
-        const creditoInfo = serviciosConCreditos.get(servicio.id);
-        
-        serviciosPorCategoria[categoria].push({
-            ...servicio,
-            tieneCreditos: !!creditoInfo,
-            creditosDisponibles: creditoInfo?.cantidad_disponible || 0,
-            precio_unitario: creditoInfo?.precio_unitario || servicio.precio
-        });
-    });
-
-    // Crear opciones agrupadas
-    Object.entries(serviciosPorCategoria).forEach(([categoria, servicios]) => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = categoria.toUpperCase();
-        
-        servicios.forEach(servicio => {
-            const option = document.createElement('option');
-            option.value = servicio.id;
-            
-            if (servicio.tieneCreditos) {
-                option.textContent = `${servicio.nombre} (${servicio.creditosDisponibles} créditos disponibles)`;
-                option.dataset.precio = servicio.precio_unitario || servicio.precio;
-                option.dataset.duracion = servicio.duracion_minutos || 60;
-            } else {
-                option.textContent = `${servicio.nombre} (Sin créditos)`;
-                option.disabled = true;
-            }
-            
-            optgroup.appendChild(option);
-        });
-        
-        selector.appendChild(optgroup);
+        const option = document.createElement('option');
+        option.value = servicio.id;
+        option.textContent = `${servicio.nombre} - ${formatearPrecio(servicio.precio)}`;
+        option.dataset.precio = servicio.precio;
+        option.dataset.duracion = servicio.duracion_minutos || 60;
+        selector.appendChild(option);
     });
 
     selector.disabled = false;
     
-    console.log('✅ Selector de servicios actualizado');
-}
-
-function mostrarMensajeSinCreditos() {
-    const mensaje = document.getElementById('mensaje-sin-creditos');
-    if (mensaje) {
-        mensaje.style.display = 'block';
-    }
-}
-
-function deshabilitarFormulario() {
-    const form = document.getElementById('agenda-form');
-    if (form) {
-        const inputs = form.querySelectorAll('input, select, button');
-        inputs.forEach(input => {
-            input.disabled = true;
-        });
-    }
+    console.log('✅ Selector de servicios actualizado (sin validación de créditos)');
 }
 
 // ============ CONFIGURACIÓN DE EVENTOS ============
@@ -371,6 +152,11 @@ function configurarEventos() {
     const servicioSelect = document.getElementById('servicio');
     const fechaInput = document.getElementById('fecha');
     const horaSelect = document.getElementById('hora');
+    
+    if (!form || !servicioSelect || !fechaInput || !horaSelect) {
+        console.error('❌ No se encontraron elementos del formulario');
+        return;
+    }
     
     // Validación en tiempo real
     form.addEventListener("input", validarFormulario);
@@ -396,21 +182,30 @@ function configurarEventos() {
 
     // Submit
     form.addEventListener("submit", agendarCita);
+    
+    console.log('✅ Eventos configurados');
 }
 
 function configurarValidacionHorarios() {
     const fechaInput = document.getElementById('fecha');
     
     if (fechaInput) {
-        // Establecer fecha mínima (mañana)
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        fechaInput.min = tomorrow.toISOString().split('T')[0];
-        
-        // Establecer fecha máxima (3 meses adelante)
-        const maxDate = new Date();
-        maxDate.setMonth(maxDate.getMonth() + 3);
-        fechaInput.max = maxDate.toISOString().split('T')[0];
+        try {
+            // ✅ CORREGIDO: Establecer fecha mínima (mañana)
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            fechaInput.min = tomorrow.toISOString().split('T')[0];
+            
+            // ✅ CORREGIDO: Establecer fecha máxima (3 meses adelante)
+            const maxDate = new Date();
+            maxDate.setMonth(maxDate.getMonth() + 3);
+            fechaInput.max = maxDate.toISOString().split('T')[0];
+            
+            console.log('✅ Validación de horarios configurada');
+            
+        } catch (error) {
+            console.error('❌ Error configurando validación de horarios:', error);
+        }
     }
 }
 
@@ -481,6 +276,8 @@ function validarFormulario() {
     const form = document.getElementById("agenda-form");
     const btn = document.getElementById("agendar-btn");
     
+    if (!form || !btn) return false;
+    
     const servicio = form.servicio.value;
     const fecha = form.fecha.value;
     const hora = form.hora.value;
@@ -499,25 +296,33 @@ function actualizarResumen() {
     const fecha = document.getElementById('fecha');
     const hora = document.getElementById('hora');
     const modalidad = document.querySelector('input[name="modalidad"]:checked');
+    const resumenCita = document.getElementById('resumen-cita');
+    
+    if (!servicio || !fecha || !hora || !resumenCita) return;
     
     if (servicio.value && fecha.value && hora.value && modalidad) {
         const selectedOption = servicio.options[servicio.selectedIndex];
         const precio = selectedOption.dataset.precio || 0;
         
-        document.getElementById('resumen-servicio').textContent = selectedOption.text;
-        document.getElementById('resumen-fecha-hora').textContent = 
-            `${formatearFecha(fecha.value)} a las ${formatearHora(hora.value)}`;
-        document.getElementById('resumen-modalidad').textContent = 
-            modalidad.value.charAt(0).toUpperCase() + modalidad.value.slice(1);
-        document.getElementById('resumen-precio').textContent = formatearPrecio(precio);
+        const resumenServicio = document.getElementById('resumen-servicio');
+        const resumenFechaHora = document.getElementById('resumen-fecha-hora');
+        const resumenModalidad = document.getElementById('resumen-modalidad');
+        const resumenPrecio = document.getElementById('resumen-precio');
         
-        document.getElementById('resumen-cita').style.display = 'block';
+        if (resumenServicio) resumenServicio.textContent = selectedOption.text;
+        if (resumenFechaHora) resumenFechaHora.textContent = 
+            `${formatearFecha(fecha.value)} a las ${formatearHora(hora.value)}`;
+        if (resumenModalidad) resumenModalidad.textContent = 
+            modalidad.value.charAt(0).toUpperCase() + modalidad.value.slice(1);
+        if (resumenPrecio) resumenPrecio.textContent = formatearPrecio(precio);
+        
+        resumenCita.style.display = 'block';
     } else {
-        document.getElementById('resumen-cita').style.display = 'none';
+        resumenCita.style.display = 'none';
     }
 }
 
-// ============ AGENDAMIENTO DE CITA ============
+// ============ AGENDAMIENTO DE CITA SIN VALIDAR CRÉDITOS ============
 
 async function agendarCita(event) {
     event.preventDefault();
@@ -543,7 +348,7 @@ async function agendarCita(event) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Agendando...';
         
-        console.log('📤 Enviando datos de cita:', datos);
+        console.log('📤 Enviando datos de cita (sin validar créditos):', datos);
         
         const response = await apiRequest('/citas', {
             method: 'POST',
@@ -557,10 +362,8 @@ async function agendarCita(event) {
         
         // Limpiar formulario
         form.reset();
-        document.getElementById('resumen-cita').style.display = 'none';
-        
-        // Recargar créditos
-        await cargarCreditosUsuario();
+        const resumenCita = document.getElementById('resumen-cita');
+        if (resumenCita) resumenCita.style.display = 'none';
         
     } catch (error) {
         console.error('❌ Error agendando cita:', error);
@@ -598,40 +401,59 @@ function mostrarConfirmacionCita(cita) {
         </div>
     `;
     
-    document.getElementById('modal-body-content').innerHTML = modalContent;
-    document.getElementById('modal-confirmacion').style.display = 'flex';
+    const modalBodyContent = document.getElementById('modal-body-content');
+    const modalConfirmacion = document.getElementById('modal-confirmacion');
+    
+    if (modalBodyContent) modalBodyContent.innerHTML = modalContent;
+    if (modalConfirmacion) modalConfirmacion.style.display = 'flex';
 }
 
 function cerrarModal() {
-    document.getElementById('modal-confirmacion').style.display = 'none';
+    const modalConfirmacion = document.getElementById('modal-confirmacion');
+    if (modalConfirmacion) modalConfirmacion.style.display = 'none';
 }
 
 // ============ FUNCIONES AUXILIARES ============
 
 function formatearFecha(fecha) {
-    const date = new Date(fecha);
-    return date.toLocaleDateString('es-ES', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    try {
+        const date = new Date(fecha + 'T00:00:00'); // Evitar problemas de zona horaria
+        return date.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return fecha;
+    }
 }
 
 function formatearHora(hora) {
-    const [hours, minutes] = hora.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
+    try {
+        const [hours, minutes] = hora.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+    } catch (error) {
+        console.error('Error formateando hora:', error);
+        return hora;
+    }
 }
 
 function formatearPrecio(amount) {
-    return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
-        minimumFractionDigits: 0
-    }).format(amount);
+    try {
+        return new Intl.NumberFormat('es-CO', {
+            style: 'currency',
+            currency: 'COP',
+            minimumFractionDigits: 0
+        }).format(amount);
+    } catch (error) {
+        console.error('Error formateando precio:', error);
+        return `$${amount}`;
+    }
 }
 
 function mostrarMensaje(mensaje, tipo = 'info', duracion = 5000) {
@@ -688,15 +510,16 @@ function debugSistemaAgendamiento() {
     console.log('🔍 === DEBUG SISTEMA AGENDAMIENTO ===');
     console.log('🔍 usuarioActual:', usuarioActual);
     console.log('🔍 serviciosDisponibles:', serviciosDisponibles);
-    console.log('🔍 creditosUsuario:', creditosUsuario);
     console.log('🔍 auth.isAuthenticated():', auth?.isAuthenticated());
     console.log('🔍 CONFIG.API_BASE_URL:', CONFIG?.API_BASE_URL);
     
     // Verificar elementos DOM
     const elementos = {
         'servicio': document.getElementById('servicio'),
-        'creditos-disponibles': document.getElementById('creditos-disponibles'),
-        'agenda-form': document.getElementById('agenda-form')
+        'agenda-form': document.getElementById('agenda-form'),
+        'fecha': document.getElementById('fecha'),
+        'hora': document.getElementById('hora'),
+        'agendar-btn': document.getElementById('agendar-btn')
     };
     
     Object.entries(elementos).forEach(([nombre, elemento]) => {
@@ -706,7 +529,7 @@ function debugSistemaAgendamiento() {
     console.log('🔍 === FIN DEBUG ===');
 }
 
-// Descomenta para debug:
-// setTimeout(() => debugSistemaAgendamiento(), 3000);
+// Función global para cerrar modal (para onclick en HTML)
+window.cerrarModal = cerrarModal;
 
-console.log('✅ Sistema de agendamiento de CreSer cargado');
+console.log('✅ Sistema de agendamiento de CreSer cargado (sin validación de créditos)');

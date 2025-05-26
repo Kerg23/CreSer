@@ -135,7 +135,7 @@ async def obtener_estadisticas_pagos(
 # CORREGIDO: Endpoint /mis-pagos ANTES de los endpoints con parámetros
 @router.get("/mis-pagos")
 async def obtener_mis_pagos(
-    current_user: Usuario = Depends(get_current_active_user),  # ✅ CORRECTO: get_current_active_user
+    current_user: Usuario = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Obtener pagos del usuario autenticado"""
@@ -173,6 +173,7 @@ async def crear_pago(
     try:
         logger.info(f"Creando nuevo pago: {pago_data}")
         
+        # ✅ CORREGIDO: Removido referencia_bancaria
         nuevo_pago = Pago(
             usuario_id=pago_data.get('usuario_id'),
             nombre_pagador=pago_data['nombre_pagador'],
@@ -183,8 +184,8 @@ async def crear_pago(
             concepto=pago_data['concepto'],
             metodo_pago=pago_data.get('metodo_pago', 'qr'),
             tipo_compra=pago_data['tipo_compra'],
-            referencia_bancaria=pago_data.get('referencia_bancaria'),
-            estado='pendiente'
+            # REMOVIDO: referencia_bancaria=pago_data.get('referencia_bancaria'),
+            estado='aprobado'  # ✅ Auto-aprobar pagos para el sistema de compras
         )
         
         db.add(nuevo_pago)
@@ -317,21 +318,33 @@ async def subir_comprobante(
         if not pago:
             raise HTTPException(status_code=404, detail="Pago no encontrado")
         
+        # Verificar permisos
+        if current_user.tipo != 'administrador' and pago.usuario_id != current_user.id:
+            raise HTTPException(status_code=403, detail="No tienes permisos para subir comprobante a este pago")
+        
         # Validar tipo de archivo
         allowed_types = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
         if file.content_type not in allowed_types:
-            raise HTTPException(status_code=400, detail="Tipo de archivo no permitido")
+            raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Solo se permiten: JPG, PNG, PDF")
+        
+        # Validar tamaño (5MB máximo)
+        max_size = 5 * 1024 * 1024  # 5MB
+        content = await file.read()
+        if len(content) > max_size:
+            raise HTTPException(status_code=400, detail="El archivo es demasiado grande. Máximo 5MB")
         
         # Crear directorio si no existe
         upload_dir = "uploads/comprobantes"
         os.makedirs(upload_dir, exist_ok=True)
         
-        # Guardar archivo
-        filename = f"comprobante_{pago_id}_{int(datetime.now().timestamp())}_{file.filename}"
+        # Generar nombre único para el archivo
+        timestamp = int(datetime.now().timestamp())
+        file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'bin'
+        filename = f"comprobante_{pago_id}_{timestamp}.{file_extension}"
         filepath = os.path.join(upload_dir, filename)
         
+        # Guardar archivo
         with open(filepath, "wb") as buffer:
-            content = await file.read()
             buffer.write(content)
         
         # Actualizar pago
@@ -340,7 +353,11 @@ async def subir_comprobante(
         db.commit()
         
         logger.info(f"Comprobante subido exitosamente: {filename}")
-        return {"message": "Comprobante subido exitosamente", "filename": filename}
+        return {
+            "message": "Comprobante subido exitosamente", 
+            "filename": filename,
+            "pago_id": pago_id
+        }
         
     except HTTPException:
         db.rollback()
@@ -349,3 +366,98 @@ async def subir_comprobante(
         db.rollback()
         logger.error(f"Error subiendo comprobante: {e}")
         raise HTTPException(status_code=500, detail="Error subiendo comprobante")
+
+@router.put("/{pago_id}")
+async def actualizar_pago(
+    pago_id: int,
+    pago_data: dict,
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
+):
+    """Actualizar un pago (solo administradores)"""
+    try:
+        logger.info(f"Actualizando pago {pago_id}")
+        
+        pago = db.query(Pago).filter(Pago.id == pago_id).first()
+        if not pago:
+            raise HTTPException(status_code=404, detail="Pago no encontrado")
+        
+        # Campos que se pueden actualizar
+        campos_actualizables = [
+            'nombre_pagador', 'email_pagador', 'telefono_pagador', 
+            'documento_pagador', 'monto', 'concepto', 'metodo_pago', 
+            'tipo_compra', 'notas_admin'
+        ]
+        
+        for campo in campos_actualizables:
+            if campo in pago_data and pago_data[campo] is not None:
+                setattr(pago, campo, pago_data[campo])
+        
+        pago.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(pago)
+        
+        logger.info(f"Pago {pago_id} actualizado exitosamente")
+        return pago.to_dict()
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error actualizando pago {pago_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error actualizando pago")
+
+@router.delete("/{pago_id}")
+async def eliminar_pago(
+    pago_id: int,
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
+):
+    """Eliminar un pago (solo administradores)"""
+    try:
+        logger.info(f"Eliminando pago {pago_id}")
+        
+        pago = db.query(Pago).filter(Pago.id == pago_id).first()
+        if not pago:
+            raise HTTPException(status_code=404, detail="Pago no encontrado")
+        
+        # Verificar si tiene créditos asociados
+        try:
+            from app.models.credito import Credito
+            creditos_asociados = db.query(func.count(Credito.id)).filter(
+                Credito.pago_id == pago_id
+            ).scalar() or 0
+            
+            if creditos_asociados > 0:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"No se puede eliminar: tiene {creditos_asociados} créditos asociados"
+                )
+        except ImportError:
+            # Si no existe tabla creditos, continuar
+            pass
+        
+        # Eliminar archivo de comprobante si existe
+        if pago.comprobante:
+            try:
+                filepath = os.path.join("uploads/comprobantes", pago.comprobante)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    logger.info(f"Archivo de comprobante eliminado: {pago.comprobante}")
+            except Exception as e:
+                logger.warning(f"No se pudo eliminar archivo de comprobante: {e}")
+        
+        db.delete(pago)
+        db.commit()
+        
+        logger.info(f"Pago {pago_id} eliminado exitosamente")
+        return {"message": "Pago eliminado exitosamente"}
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error eliminando pago {pago_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error eliminando pago")

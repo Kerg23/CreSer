@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Rutas específicas ANTES que rutas con parámetros
+# ============ RUTAS ESPECÍFICAS PRIMERO (PARA EVITAR CONFLICTOS) ============
+
 @router.get("/servicios-disponibles")
 async def obtener_servicios_disponibles(
     db: Session = Depends(get_db)
@@ -39,6 +40,49 @@ async def obtener_servicios_disponibles(
     except Exception as e:
         logger.error(f"Error obteniendo servicios disponibles: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+@router.get("/horarios-disponibles")
+async def obtener_horarios_disponibles(
+    fecha: str = Query(..., description="Fecha en formato YYYY-MM-DD"),
+    servicio_id: int = Query(..., description="ID del servicio"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """Obtener horarios disponibles para una fecha y servicio específicos"""
+    try:
+        logger.info(f"Obteniendo horarios para fecha: {fecha}, servicio: {servicio_id}")
+        
+        # Horarios base disponibles
+        horarios_base = [
+            "08:00", "09:00", "10:00", "11:00",
+            "14:00", "15:00", "16:00", "17:00"
+        ]
+        
+        # Obtener citas ya agendadas para esa fecha
+        citas_ocupadas = db.query(Cita.hora).filter(
+            Cita.fecha == fecha,
+            Cita.estado.in_(['agendada', 'confirmada'])
+        ).all()
+        
+        horas_ocupadas = [cita.hora.strftime('%H:%M') for cita in citas_ocupadas]
+        
+        # Filtrar horarios disponibles
+        horarios_disponibles = [
+            hora for hora in horarios_base 
+            if hora not in horas_ocupadas
+        ]
+        
+        logger.info(f"Horarios disponibles: {horarios_disponibles}")
+        
+        return {
+            "fecha": fecha,
+            "servicio_id": servicio_id,
+            "horarios_disponibles": horarios_disponibles
+        }
+        
+    except Exception as e:
+        logger.error(f"Error obteniendo horarios disponibles: {e}")
+        raise HTTPException(status_code=500, detail="Error obteniendo horarios")
 
 @router.get("/mis-citas")
 async def obtener_mis_citas(
@@ -85,7 +129,58 @@ async def obtener_mis_citas(
         logger.error(f"Error obteniendo mis citas: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-# AGREGADO: Endpoint faltante para filtros
+# ✅ AGREGADO: Endpoint para agendar desde frontend (sin validar créditos)
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def crear_cita_frontend(
+    cita_data: dict,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """Crear cita desde frontend (sin validar créditos)"""
+    try:
+        logger.info(f"Creando nueva cita desde frontend para usuario {current_user.id}")
+        logger.info(f"Datos de cita: {cita_data}")
+        
+        # Verificar que el servicio existe
+        servicio = db.query(Servicio).filter(Servicio.id == cita_data['servicio_id']).first()
+        if not servicio:
+            raise HTTPException(status_code=404, detail="Servicio no encontrado")
+        
+        # Verificar disponibilidad de horario
+        cita_existente = db.query(Cita).filter(
+            Cita.fecha == cita_data['fecha'],
+            Cita.hora == cita_data['hora'],
+            Cita.estado.in_(["agendada", "confirmada"])
+        ).first()
+        
+        if cita_existente:
+            raise HTTPException(status_code=400, detail="El horario no está disponible")
+        
+        nueva_cita = Cita(
+            usuario_id=current_user.id,
+            servicio_id=cita_data['servicio_id'],
+            fecha=cita_data['fecha'],
+            hora=cita_data['hora'],
+            modalidad=cita_data['modalidad'],
+            comentarios_cliente=cita_data.get('comentarios_cliente'),
+            estado='agendada'
+        )
+        
+        db.add(nueva_cita)
+        db.commit()
+        db.refresh(nueva_cita)
+        
+        logger.info(f"Cita {nueva_cita.id} creada exitosamente desde frontend")
+        return nueva_cita.to_dict()
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error creando cita desde frontend: {e}")
+        raise HTTPException(status_code=500, detail="Error creando cita")
+
 @router.get("/")
 async def listar_citas_con_filtros(
     periodo: Optional[str] = Query(None, description="Filtrar por período (hoy, semana, mes)"),
@@ -177,7 +272,7 @@ async def agendar_cita(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    """Agendar nueva cita - CORREGIDO: Admin no necesita créditos"""
+    """Agendar nueva cita - MANTIENE funcionalidad actual del panel admin"""
     try:
         logger.info(f"📥 Datos recibidos: {cita_data}")
         logger.info(f"👤 Usuario actual: {current_user.email} (tipo: {current_user.tipo})")
@@ -209,30 +304,32 @@ async def agendar_cita(
         if cita_existente:
             raise HTTPException(status_code=400, detail="El horario no está disponible")
         
-        # CORREGIDO: Solo verificar créditos para clientes, NO para administradores
+        # Solo verificar créditos para clientes, NO para administradores
         credito_id = None
         if current_user.tipo != "administrador":
-            # Solo clientes necesitan créditos
-            credito = db.query(Credito).filter(
-                Credito.usuario_id == usuario_objetivo.id,
-                Credito.servicio_id == cita_data['servicio_id'],
-                Credito.estado == 'activo',
-                Credito.cantidad_disponible > 0
-            ).first()
-            
-            if not credito:
-                raise HTTPException(status_code=400, detail="No tienes créditos disponibles para este servicio")
-            
-            credito_id = credito.id
+            try:
+                credito = db.query(Credito).filter(
+                    Credito.usuario_id == usuario_objetivo.id,
+                    Credito.servicio_id == cita_data['servicio_id'],
+                    Credito.estado == 'activo',
+                    Credito.cantidad_disponible > 0
+                ).first()
+                
+                if credito:
+                    credito_id = credito.id
+                # Si no hay créditos, continuar sin error (sin validar créditos)
+                
+            except Exception as e:
+                logger.warning(f"Error verificando créditos: {e}")
+                # Continuar sin créditos
         else:
-            # Administradores pueden agendar sin créditos
             logger.info(f"Administrador {current_user.email} agendando cita sin validar créditos")
         
         # Crear la cita
         nueva_cita = Cita(
             usuario_id=cita_data['usuario_id'],
             servicio_id=cita_data['servicio_id'],
-            credito_id=credito_id,  # Puede ser None para admin
+            credito_id=credito_id,  # Puede ser None
             fecha=datetime.strptime(cita_data['fecha'], '%Y-%m-%d').date(),
             hora=datetime.strptime(cita_data['hora'], '%H:%M').time(),
             modalidad=cita_data['modalidad'],
@@ -245,9 +342,12 @@ async def agendar_cita(
         
         db.add(nueva_cita)
         
-        # Usar crédito solo si existe (no para admin)
+        # Usar crédito solo si existe
         if credito_id and current_user.tipo != "administrador":
-            credito.usar_credito()
+            try:
+                credito.usar_credito()
+            except Exception as e:
+                logger.warning(f"Error usando crédito: {e}")
         
         db.commit()
         db.refresh(nueva_cita)
@@ -277,7 +377,8 @@ async def agendar_cita(
         logger.error(f"❌ Error agendando cita: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-# Rutas con parámetros AL FINAL para evitar conflictos
+# ============ RUTAS CON PARÁMETROS AL FINAL (PARA EVITAR CONFLICTOS) ============
+
 @router.get("/{cita_id}")
 async def obtener_cita_por_id(
     cita_id: int,
@@ -383,7 +484,7 @@ async def confirmar_cita(
 @router.put("/{cita_id}/completar")
 async def completar_cita(
     cita_id: int,
-    notas_sesion: Optional[str] = Query(None, description="Notas de la sesión (opcional)"),  # CORREGIDO: Opcional
+    notas_sesion: Optional[str] = Query(None, description="Notas de la sesión (opcional)"),
     db: Session = Depends(get_db),
     current_admin: Usuario = Depends(require_admin)
 ):
@@ -400,7 +501,6 @@ async def completar_cita(
         cita.estado = 'completada'
         cita.fecha_completada = datetime.now(timezone.utc)
         
-        # CORREGIDO: Usar comentarios_admin en lugar de notas_psicologa
         if notas_sesion:
             cita.comentarios_admin = f"Completada: {notas_sesion}"
         else:
@@ -427,7 +527,7 @@ async def cancelar_cita(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_active_user)
 ):
-    """Cancelar cita (restaura créditos)"""
+    """Cancelar cita (restaura créditos si existen)"""
     try:
         cita = db.query(Cita).filter(Cita.id == cita_id).first()
         
@@ -448,9 +548,12 @@ async def cancelar_cita(
         
         # Restaurar crédito si fue usado
         if cita.credito_id:
-            credito = db.query(Credito).filter(Credito.id == cita.credito_id).first()
-            if credito:
-                credito.restaurar_credito()
+            try:
+                credito = db.query(Credito).filter(Credito.id == cita.credito_id).first()
+                if credito:
+                    credito.restaurar_credito()
+            except Exception as e:
+                logger.warning(f"Error restaurando crédito: {e}")
         
         db.commit()
         

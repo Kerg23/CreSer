@@ -1,49 +1,73 @@
 // ============ CONFIGURACIÓN Y VARIABLES GLOBALES ============
-const precios = {
-    'valoracion-individual': 100000,
-    'evaluacion-sesion': 80000,
-    'psicoterapia-individual': 70000,
-    'pareja-valoracion': 120000,
-    'pareja-regular': 100000,
-    'talleres-grupales': 45000,
-    'orientacion-familiar': 110000
-};
-
-const nombres = {
-    'valoracion-individual': 'Valoración Psicológica Individual',
-    'evaluacion-sesion': 'Evaluación y Diagnóstico',
-    'psicoterapia-individual': 'Psicoterapia Individual',
-    'pareja-valoracion': 'Psicoterapia de Pareja - Valoración',
-    'pareja-regular': 'Psicoterapia de Pareja - Regular',
-    'talleres-grupales': 'Talleres Grupales en Salud Mental',
-    'orientacion-familiar': 'Orientación Familiar'
-};
-
-const servicioIdMap = {
-    'valoracion-individual': 3,
-    'evaluacion-sesion': 2,
-    'psicoterapia-individual': 1,
-    'pareja-valoracion': 4,
-    'pareja-regular': 4,
-    'talleres-grupales': 6,
-    'orientacion-familiar': 2
-};
-
+let serviciosDisponibles = [];
 let carritoMultiple = {};
 let paqueteSeleccionado = null;
 let tipoSeleccion = null;
 
 // ============ INICIALIZACIÓN ============
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Inicializando sistema de compras reales...');
+    console.log('🚀 Inicializando sistema de compras...');
     inicializarSistemaCompras();
 });
 
-function inicializarSistemaCompras() {
-    configurarEventosFormulario();
-    preLlenarDatosUsuario();
-    configurarSelectorIndividual();
-    console.log('✅ Sistema de compras reales inicializado');
+async function inicializarSistemaCompras() {
+    try {
+        // Cargar servicios desde la base de datos
+        await cargarServiciosDisponibles();
+        
+        // Configurar eventos
+        configurarEventosFormulario();
+        preLlenarDatosUsuario();
+        
+        // Renderizar selectores dinámicamente
+        configurarSelectorIndividual();
+        renderizarSelectorMultiple();
+        
+        console.log('✅ Sistema de compras inicializado');
+    } catch (error) {
+        console.error('❌ Error inicializando sistema:', error);
+        mostrarMensaje('Error cargando datos. Por favor, recarga la página.', 'error');
+    }
+}
+
+// ============ CARGA DE DATOS DESDE BD ============
+async function cargarServiciosDisponibles() {
+    try {
+        console.log('🔄 Cargando servicios desde BD...');
+        const response = await apiRequest('/servicios');
+        serviciosDisponibles = response || [];
+        console.log('✅ Servicios cargados:', serviciosDisponibles.length);
+    } catch (error) {
+        console.error('❌ Error cargando servicios:', error);
+        // Fallback a servicios estáticos
+        serviciosDisponibles = [
+            {
+                id: 1,
+                codigo: 'PSICO_IND',
+                nombre: 'Psicoterapia Individual',
+                precio: 70000,
+                duracion_minutos: 60,
+                categoria: 'psicoterapia'
+            },
+            {
+                id: 2,
+                codigo: 'ORIENT_FAM',
+                nombre: 'Orientación Familiar',
+                precio: 110000,
+                duracion_minutos: 90,
+                categoria: 'orientacion'
+            },
+            {
+                id: 3,
+                codigo: 'VALOR_PSICO',
+                nombre: 'Valoración Psicológica',
+                precio: 100000,
+                duracion_minutos: 120,
+                categoria: 'evaluacion'
+            }
+        ];
+        console.log('⚠️ Usando servicios fallback');
+    }
 }
 
 // ============ CONFIGURACIÓN DE EVENTOS ============
@@ -54,328 +78,104 @@ function configurarEventosFormulario() {
     }
 }
 
-// ============ PROCESAMIENTO DE PAGO REAL ============
-async function procesarPagoReal(event) {
-    event.preventDefault();
-    
-    console.log('💳 Procesando pago real...');
-    
-    if (!paqueteSeleccionado) {
-        mostrarMensaje('No hay ningún paquete seleccionado', 'error');
-        return;
-    }
-    
-    const formData = new FormData(event.target);
-    const submitButton = event.target.querySelector('button[type="submit"]');
-    
-    // Validar formulario
-    if (!validarFormulario(formData)) {
-        return;
-    }
-    
-    // Deshabilitar botón y mostrar loading
-    submitButton.disabled = true;
-    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando Pago...';
-    
-    try {
-        // Paso 1: Crear/verificar usuario
-        const usuario = await crearOVerificarUsuario(formData);
-        console.log('✅ Usuario verificado/creado:', usuario);
-        
-        // Paso 2: Crear pago
-        const pago = await crearPago(formData, usuario.id);
-        console.log('✅ Pago creado:', pago);
-        
-        // Paso 3: Crear créditos
-        const creditos = await crearCreditos(usuario.id, pago.id);
-        console.log('✅ Créditos creados:', creditos);
-        
-        // Mostrar confirmación
-        mostrarConfirmacionReal(pago, creditos, usuario);
-        
-    } catch (error) {
-        console.error('❌ Error procesando pago:', error);
-        mostrarMensaje(`Error: ${error.message}`, 'error');
-    } finally {
-        // Restaurar botón
-        submitButton.disabled = false;
-        submitButton.innerHTML = '<i class="fas fa-credit-card"></i> Procesar Pago';
-    }
-}
-
-// ============ GESTIÓN DE USUARIOS ============
-async function crearOVerificarUsuario(formData) {
-    const email = formData.get('email');
-    
-    try {
-        // Intentar obtener usuario existente por email
-        console.log('🔍 Verificando si el usuario existe...');
-        
-        // Buscar usuario por email (endpoint que necesitamos crear)
-        const usuarioExistente = await buscarUsuarioPorEmail(email);
-        
-        if (usuarioExistente) {
-            console.log('✅ Usuario existente encontrado');
-            return usuarioExistente;
-        }
-        
-    } catch (error) {
-        console.log('ℹ️ Usuario no existe, creando nuevo...');
-    }
-    
-    // Crear nuevo usuario
-    const nuevoUsuario = await crearNuevoUsuario(formData);
-    return nuevoUsuario;
-}
-
-async function buscarUsuarioPorEmail(email) {
-    try {
-        // Este endpoint necesita ser creado en el backend
-        const response = await apiRequest(`/usuarios/buscar-por-email?email=${encodeURIComponent(email)}`);
-        return response;
-    } catch (error) {
-        if (error.message.includes('404')) {
-            return null; // Usuario no encontrado
-        }
-        throw error;
-    }
-}
-
-async function crearNuevoUsuario(formData) {
-    const userData = {
-        nombre: formData.get('nombre'),
-        email: formData.get('email'),
-        telefono: formData.get('telefono'),
-        documento: formData.get('documento'),
-        password: generarPasswordTemporal(),
-        tipo: 'cliente',
-        estado: 'activo'
-    };
-    
-    console.log('📤 Creando nuevo usuario:', userData);
-    
-    const response = await apiRequest('/usuarios/', {
-        method: 'POST',
-        body: JSON.stringify(userData)
-    });
-    
-    return response;
-}
-
-function generarPasswordTemporal() {
-    // Generar password temporal de 8 caracteres
-    return Math.random().toString(36).slice(-8);
-}
-
-// ============ GESTIÓN DE PAGOS ============
-async function crearPago(formData, usuarioId) {
-    const pagoData = {
-        usuario_id: usuarioId,
-        nombre_pagador: formData.get('nombre'),
-        email_pagador: formData.get('email'),
-        telefono_pagador: formData.get('telefono'),
-        documento_pagador: formData.get('documento'),
-        monto: paqueteSeleccionado.precio,
-        concepto: generarConcepto(),
-        metodo_pago: 'qr', // Por defecto QR
-        tipo_compra: paqueteSeleccionado.tipo === 'paquete' ? 'paquete' : 'servicio_individual'
-    };
-    
-    console.log('📤 Creando pago:', pagoData);
-    
-    const response = await apiRequest('/pagos/', {
-        method: 'POST',
-        body: JSON.stringify(pagoData)
-    });
-    
-    return response;
-}
-
-// ============ GESTIÓN DE CRÉDITOS ============
-async function crearCreditos(usuarioId, pagoId) {
-    const creditosACrear = calcularCreditosACrear();
-    const creditosCreados = [];
-    
-    console.log('💳 Creando créditos para usuario:', usuarioId);
-    
-    for (const credito of creditosACrear) {
-        try {
-            const creditoData = {
-                usuario_id: usuarioId,
-                servicio_id: credito.servicio_id,
-                cantidad_inicial: credito.cantidad,
-                cantidad_disponible: credito.cantidad,
-                precio_unitario: credito.precio_unitario,
-                pago_id: pagoId,
-                estado: 'activo'
-            };
-            
-            console.log('📤 Creando crédito:', creditoData);
-            
-            const creditoCreado = await apiRequest('/creditos/', {
-                method: 'POST',
-                body: JSON.stringify(creditoData)
-            });
-            
-            creditosCreados.push(creditoCreado);
-            
-        } catch (error) {
-            console.error('❌ Error creando crédito:', error);
-            // Continuar con los otros créditos
-        }
-    }
-    
-    return creditosCreados;
-}
-
-function calcularCreditosACrear() {
-    let creditos = [];
-    
-    if (paqueteSeleccionado.tipo === 'individual') {
-        creditos.push({
-            servicio_id: servicioIdMap[paqueteSeleccionado.servicio],
-            cantidad: 1,
-            precio_unitario: paqueteSeleccionado.precio,
-            nombre: paqueteSeleccionado.nombre
-        });
-    } else if (paqueteSeleccionado.tipo === 'multiple') {
-        paqueteSeleccionado.servicios.forEach(servicio => {
-            creditos.push({
-                servicio_id: servicioIdMap[servicio.servicio],
-                cantidad: servicio.cantidad,
-                precio_unitario: servicio.precio,
-                nombre: servicio.nombre
-            });
-        });
-    } else if (paqueteSeleccionado.tipo === 'paquete') {
-        // Para paquetes especiales, crear créditos según el tipo
-        if (paqueteSeleccionado.id === 'psicoterapia-4') {
-            creditos.push({
-                servicio_id: servicioIdMap['psicoterapia-individual'],
-                cantidad: 4,
-                precio_unitario: paqueteSeleccionado.precio / 4,
-                nombre: 'Psicoterapia Individual'
-            });
-        } else if (paqueteSeleccionado.id === 'psicoterapia-8') {
-            creditos.push({
-                servicio_id: servicioIdMap['psicoterapia-individual'],
-                cantidad: 8,
-                precio_unitario: paqueteSeleccionado.precio / 8,
-                nombre: 'Psicoterapia Individual'
-            });
-        } else if (paqueteSeleccionado.id === 'evaluacion-completa') {
-            creditos.push({
-                servicio_id: servicioIdMap['evaluacion-sesion'],
-                cantidad: 5,
-                precio_unitario: paqueteSeleccionado.precio / 5,
-                nombre: 'Evaluación y Diagnóstico'
-            });
-        }
-    }
-    
-    return creditos;
-}
-
-// ============ CONFIRMACIÓN REAL ============
-function mostrarConfirmacionReal(pago, creditos, usuario) {
-    // Ocultar sección de pago
-    const seccionPago = document.getElementById('seccion-pago');
-    if (seccionPago) seccionPago.style.display = 'none';
-    
-    // Mostrar sección de confirmación
-    const confirmacion = document.getElementById('confirmacion');
-    if (confirmacion) {
-        confirmacion.style.display = 'block';
-        
-        // Actualizar contenido de confirmación
-        const successIcon = confirmacion.querySelector('.success-icon');
-        const titulo = confirmacion.querySelector('h2');
-        const descripcion = confirmacion.querySelector('p');
-        
-        if (successIcon) successIcon.textContent = '✅';
-        if (titulo) titulo.textContent = '¡Compra Exitosa!';
-        if (descripcion) descripcion.textContent = 'Tus créditos han sido añadidos a tu cuenta';
-        
-        // Llenar lista de créditos reales
-        const listaCreditosFinales = document.getElementById('lista-creditos-finales');
-        if (listaCreditosFinales && creditos) {
-            let creditosHTML = '';
-            creditos.forEach(credito => {
-                creditosHTML += `
-                    <div class="credito-final">
-                        <span class="credito-nombre">${credito.servicio_nombre || 'Servicio'}</span>
-                        <span class="credito-cantidad">${credito.cantidad_disponible} crédito${credito.cantidad_disponible > 1 ? 's' : ''}</span>
-                    </div>
-                `;
-            });
-            listaCreditosFinales.innerHTML = creditosHTML;
-        }
-        
-        // Actualizar información de cuenta
-        const infoCuenta = confirmacion.querySelector('.info-cuenta');
-        if (infoCuenta) {
-            infoCuenta.innerHTML = `
-                <h3>Información de tu Cuenta:</h3>
-                <p>📧 <strong>Email:</strong> ${usuario.email}</p>
-                <p>🔑 <strong>ID de Pago:</strong> #${pago.id}</p>
-                <p>💰 <strong>Monto Pagado:</strong> ${formatearPrecio(pago.monto)}</p>
-                <p>📅 Tus créditos están listos para usar</p>
-                <p>🎯 Puedes agendar tus citas cuando lo necesites</p>
-            `;
-        }
-        
-        confirmacion.scrollIntoView({ behavior: 'smooth' });
-    }
-    
-    // Limpiar selecciones
-    limpiarSelecciones();
-    
-    // Mostrar mensaje de éxito
-    mostrarMensaje('¡Pago procesado exitosamente! Créditos añadidos a tu cuenta.', 'success');
-}
-
-// ============ RESTO DE FUNCIONES (mantener las existentes) ============
-
 function configurarSelectorIndividual() {
-    const servicioIndividualSelect = document.getElementById('servicio-individual');
-    if (servicioIndividualSelect) {
-        servicioIndividualSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const precio = selectedOption.getAttribute('data-precio');
-            const btnIndividual = document.getElementById('btn-individual');
-            
-            if (precio) {
-                document.getElementById('precio-individual').textContent = formatearPrecio(parseInt(precio));
-                btnIndividual.disabled = false;
-            } else {
-                document.getElementById('precio-individual').textContent = 'Selecciona un servicio';
-                btnIndividual.disabled = true;
-            }
-        });
-    }
-}
-
-function preLlenarDatosUsuario() {
-    try {
-        if (typeof auth !== 'undefined' && auth && auth.isAuthenticated()) {
-            const user = auth.getUser();
-            const nombreInput = document.getElementById('nombre-completo');
-            const emailInput = document.getElementById('email');
-            const telefonoInput = document.getElementById('telefono');
-            const documentoInput = document.getElementById('documento');
-            
-            if (nombreInput && user.nombre) nombreInput.value = user.nombre;
-            if (emailInput && user.email) emailInput.value = user.email;
-            if (telefonoInput && user.telefono) telefonoInput.value = user.telefono;
-            if (documentoInput && user.documento) documentoInput.value = user.documento;
-            
-            console.log('✅ Datos de usuario pre-llenados');
+    const servicioSelect = document.getElementById('servicio-individual');
+    if (!servicioSelect) return;
+    
+    // Limpiar opciones existentes
+    servicioSelect.innerHTML = '<option value="">Elige un servicio</option>';
+    
+    // Agrupar servicios por categoría
+    const serviciosPorCategoria = {};
+    
+    serviciosDisponibles.forEach(servicio => {
+        const categoria = servicio.categoria || 'Otros';
+        if (!serviciosPorCategoria[categoria]) {
+            serviciosPorCategoria[categoria] = [];
         }
-    } catch (error) {
-        console.warn('⚠️ No se pudieron pre-llenar los datos del usuario:', error);
-    }
+        serviciosPorCategoria[categoria].push(servicio);
+    });
+    
+    // Crear opciones agrupadas
+    Object.entries(serviciosPorCategoria).forEach(([categoria, servicios]) => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = categoria.toUpperCase();
+        
+        servicios.forEach(servicio => {
+            const option = document.createElement('option');
+            option.value = servicio.id;
+            option.textContent = `${servicio.nombre} (${servicio.duracion_minutos} min) - ${formatearPrecio(servicio.precio)}`;
+            option.dataset.precio = servicio.precio;
+            option.dataset.nombre = servicio.nombre;
+            optgroup.appendChild(option);
+        });
+        
+        servicioSelect.appendChild(optgroup);
+    });
+    
+    // Configurar evento de cambio
+    servicioSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const precio = selectedOption.getAttribute('data-precio');
+        const btnIndividual = document.getElementById('btn-individual');
+        
+        if (precio) {
+            document.getElementById('precio-individual').textContent = formatearPrecio(parseInt(precio));
+            btnIndividual.disabled = false;
+        } else {
+            document.getElementById('precio-individual').textContent = 'Selecciona un servicio';
+            btnIndividual.disabled = true;
+        }
+    });
 }
 
+function renderizarSelectorMultiple() {
+    const container = document.querySelector('.servicios-selector-multiple');
+    if (!container) return;
+    
+    // Limpiar contenido existente
+    container.innerHTML = '<h4>Selecciona tus servicios:</h4>';
+    
+    // Agrupar servicios por categoría
+    const serviciosPorCategoria = {};
+    
+    serviciosDisponibles.forEach(servicio => {
+        const categoria = servicio.categoria || 'Otros';
+        if (!serviciosPorCategoria[categoria]) {
+            serviciosPorCategoria[categoria] = [];
+        }
+        serviciosPorCategoria[categoria].push(servicio);
+    });
+    
+    // Renderizar cada categoría
+    Object.entries(serviciosPorCategoria).forEach(([categoria, servicios]) => {
+        const categoriaDiv = document.createElement('div');
+        categoriaDiv.className = 'categoria-servicios-compra';
+        
+        let serviciosHTML = `<h5>${categoria}</h5>`;
+        
+        servicios.forEach(servicio => {
+            serviciosHTML += `
+                <div class="servicio-item">
+                    <div class="servicio-info">
+                        <span>${servicio.nombre}</span>
+                        <span class="precio-unitario">${formatearPrecio(servicio.precio)}</span>
+                    </div>
+                    <div class="cantidad-selector">
+                        <button type="button" onclick="cambiarCantidadBD(${servicio.id}, -1)">-</button>
+                        <span id="qty-${servicio.id}">0</span>
+                        <button type="button" onclick="cambiarCantidadBD(${servicio.id}, 1)">+</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        categoriaDiv.innerHTML = serviciosHTML;
+        container.appendChild(categoriaDiv);
+    });
+}
+
+// ============ GESTIÓN DE SELECCIÓN ============
 function seleccionarPaquete(tipo) {
     console.log('📦 Seleccionando paquete:', tipo);
     
@@ -410,17 +210,18 @@ function seleccionarIndividual() {
     }
     
     const precio = parseInt(selectedOption.getAttribute('data-precio'));
-    const servicio = selectedOption.value;
+    const nombre = selectedOption.getAttribute('data-nombre');
+    const servicioId = parseInt(selectedOption.value);
     
     paqueteSeleccionado = {
         tipo: 'individual',
-        servicio: servicio,
-        nombre: nombres[servicio],
+        servicio_id: servicioId,
+        nombre: nombre,
         precio: precio,
         cantidad: 1
     };
     
-    mostrarMensaje(`Servicio "${nombres[servicio]}" seleccionado`, 'success');
+    mostrarMensaje(`Servicio "${nombre}" seleccionado`, 'success');
 }
 
 function seleccionarMultiple() {
@@ -432,16 +233,18 @@ function seleccionarMultiple() {
     let total = 0;
     let servicios = [];
     
-    Object.keys(carritoMultiple).forEach(servicio => {
-        const cantidad = carritoMultiple[servicio];
-        const precio = precios[servicio];
-        total += cantidad * precio;
-        servicios.push({
-            servicio: servicio,
-            nombre: nombres[servicio],
-            cantidad: cantidad,
-            precio: precio
-        });
+    Object.keys(carritoMultiple).forEach(servicioId => {
+        const cantidad = carritoMultiple[servicioId];
+        const servicio = serviciosDisponibles.find(s => s.id == servicioId);
+        if (servicio) {
+            total += cantidad * servicio.precio;
+            servicios.push({
+                servicio_id: parseInt(servicioId),
+                nombre: servicio.nombre,
+                cantidad: cantidad,
+                precio: servicio.precio
+            });
+        }
     });
     
     paqueteSeleccionado = {
@@ -459,17 +262,17 @@ function seleccionarPaqueteEspecial(tipoPaquete) {
         'evaluacion-completa': {
             nombre: 'Paquete Evaluación Completa',
             precio: 370000,
-            servicios: [{ servicio: 'evaluacion-sesion', cantidad: 5 }]
+            servicios: [{ servicio_id: 3, cantidad: 5, nombre: 'Valoración Psicológica' }]
         },
         'psicoterapia-4': {
             nombre: 'Paquete Psicoterapia 4 Sesiones',
             precio: 260000,
-            servicios: [{ servicio: 'psicoterapia-individual', cantidad: 4 }]
+            servicios: [{ servicio_id: 1, cantidad: 4, nombre: 'Psicoterapia Individual' }]
         },
         'psicoterapia-8': {
             nombre: 'Paquete Psicoterapia 8 Sesiones',
             precio: 500000,
-            servicios: [{ servicio: 'psicoterapia-individual', cantidad: 8 }]
+            servicios: [{ servicio_id: 1, cantidad: 8, nombre: 'Psicoterapia Individual' }]
         }
     };
     
@@ -486,8 +289,8 @@ function seleccionarPaqueteEspecial(tipoPaquete) {
     mostrarMensaje(`${paquete.nombre} seleccionado`, 'success');
 }
 
-function cambiarCantidad(servicio, cambio) {
-    const cantidadElement = document.getElementById(`qty-${servicio}`);
+function cambiarCantidadBD(servicioId, cambio) {
+    const cantidadElement = document.getElementById(`qty-${servicioId}`);
     let cantidad = parseInt(cantidadElement.textContent) + cambio;
     
     if (cantidad < 0) cantidad = 0;
@@ -496,9 +299,9 @@ function cambiarCantidad(servicio, cambio) {
     cantidadElement.textContent = cantidad;
     
     if (cantidad > 0) {
-        carritoMultiple[servicio] = cantidad;
+        carritoMultiple[servicioId] = cantidad;
     } else {
-        delete carritoMultiple[servicio];
+        delete carritoMultiple[servicioId];
     }
     
     actualizarPrecioMultiple();
@@ -508,11 +311,13 @@ function actualizarPrecioMultiple() {
     let total = 0;
     let totalCreditos = 0;
     
-    Object.keys(carritoMultiple).forEach(servicio => {
-        const cantidad = carritoMultiple[servicio];
-        const precio = precios[servicio];
-        total += cantidad * precio;
-        totalCreditos += cantidad;
+    Object.keys(carritoMultiple).forEach(servicioId => {
+        const cantidad = carritoMultiple[servicioId];
+        const servicio = serviciosDisponibles.find(s => s.id == servicioId);
+        if (servicio) {
+            total += cantidad * servicio.precio;
+            totalCreditos += cantidad;
+        }
     });
     
     document.getElementById('precio-multiple').textContent = formatearPrecio(total);
@@ -521,6 +326,241 @@ function actualizarPrecioMultiple() {
     const btnMultiple = document.getElementById('btn-multiple');
     if (btnMultiple) {
         btnMultiple.disabled = totalCreditos === 0;
+    }
+}
+
+// ============ PROCESAMIENTO DE PAGOS ============
+async function procesarPagoReal(event) {
+    event.preventDefault();
+    
+    console.log('💳 Procesando pago real...');
+    
+    if (!paqueteSeleccionado) {
+        mostrarMensaje('No hay ningún paquete seleccionado', 'error');
+        return;
+    }
+    
+    const formData = new FormData(event.target);
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    
+    if (!validarFormulario(formData)) {
+        return;
+    }
+    
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando Pago...';
+    
+    try {
+        const usuario = await crearOVerificarUsuario(formData);
+        console.log('✅ Usuario verificado/creado:', usuario);
+        
+        const pago = await crearPago(formData, usuario.id);
+        console.log('✅ Pago creado:', pago);
+        
+        const creditos = await crearCreditos(usuario.id, pago.id);
+        console.log('✅ Créditos creados:', creditos);
+        
+        mostrarConfirmacionReal(pago, creditos, usuario);
+        
+    } catch (error) {
+        console.error('❌ Error procesando pago:', error);
+        mostrarMensaje(`Error: ${error.message}`, 'error');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fas fa-credit-card"></i> Procesar Pago';
+    }
+}
+
+// ============ GESTIÓN DE USUARIOS ============
+async function crearOVerificarUsuario(formData) {
+    const email = formData.get('email');
+    
+    try {
+        console.log('🔍 Buscando usuario existente por email:', email);
+        
+        // CORREGIDO: Buscar usuario existente usando endpoint público
+        const usuarioExistente = await buscarUsuarioPorEmailPublico(email);
+        
+        if (usuarioExistente) {
+            console.log('✅ Usuario existente encontrado:', usuarioExistente.id);
+            console.log('💡 Se agregarán créditos al usuario existente');
+            return usuarioExistente;
+        }
+        
+    } catch (error) {
+        console.log('ℹ️ Usuario no existe, creando nuevo...');
+    }
+    
+    // Solo crear usuario si NO existe
+    console.log('📝 Creando nuevo usuario para:', email);
+    const nuevoUsuario = await crearNuevoUsuario(formData);
+    return nuevoUsuario;
+}
+
+async function buscarUsuarioPorEmailPublico(email) {
+    try {
+        // CORREGIDO: Usar fetch directo sin autenticación para búsqueda pública
+        const response = await fetch(`${CONFIG.API_BASE_URL}/usuarios/buscar-por-email-publico?email=${encodeURIComponent(email)}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const usuario = await response.json();
+            return usuario;
+        } else if (response.status === 404) {
+            return null; // Usuario no encontrado
+        } else {
+            throw new Error(`Error ${response.status}`);
+        }
+        
+    } catch (error) {
+        console.error('Error buscando usuario:', error);
+        return null; // Asumir que no existe si hay error
+    }
+}
+
+async function crearNuevoUsuario(formData) {
+    const userData = {
+        nombre: formData.get('nombre'),
+        email: formData.get('email'),
+        telefono: formData.get('telefono'),
+        documento: formData.get('documento'),
+        password: generarPasswordTemporal(),
+        tipo: 'cliente',
+        estado: 'activo'
+    };
+    
+    console.log('📤 Creando nuevo usuario:', userData);
+    
+    // CORREGIDO: Usar endpoint público de registro
+    const response = await apiRequest('/usuarios/registro', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+    });
+    
+    return response;
+}
+
+function generarPasswordTemporal() {
+    return Math.random().toString(36).slice(-8);
+}
+
+// ============ GESTIÓN DE PAGOS ============
+async function crearPago(formData, usuarioId) {
+    const pagoData = {
+        usuario_id: usuarioId,
+        nombre_pagador: formData.get('nombre'),
+        email_pagador: formData.get('email'),
+        telefono_pagador: formData.get('telefono'),
+        documento_pagador: formData.get('documento'),
+        monto: paqueteSeleccionado.precio,
+        concepto: generarConcepto(),
+        metodo_pago: formData.get('metodo-pago') || 'qr',
+        tipo_compra: paqueteSeleccionado.tipo === 'paquete' ? 'paquete' : 'servicio_individual'
+    };
+    
+    console.log('📤 Creando pago:', pagoData);
+    
+    const response = await apiRequest('/pagos/', {
+        method: 'POST',
+        body: JSON.stringify(pagoData)
+    });
+    
+    return response;
+}
+
+// ============ GESTIÓN DE CRÉDITOS ============
+async function crearCreditos(usuarioId, pagoId) {
+    const creditosACrear = calcularCreditosACrear();
+    const creditosCreados = [];
+    
+    console.log('💳 Creando créditos para usuario:', usuarioId);
+    
+    for (const credito of creditosACrear) {
+        try {
+            const creditoData = {
+                usuario_id: usuarioId,
+                pago_id: pagoId,
+                servicio_id: credito.servicio_id,
+                cantidad_inicial: credito.cantidad,
+                cantidad_disponible: credito.cantidad,
+                precio_unitario: credito.precio_unitario,
+                estado: 'activo'
+            };
+            
+            console.log('📤 Creando crédito:', creditoData);
+            
+            const creditoCreado = await apiRequest('/creditos/', {
+                method: 'POST',
+                body: JSON.stringify(creditoData)
+            });
+            
+            creditosCreados.push(creditoCreado);
+            
+        } catch (error) {
+            console.error('❌ Error creando crédito:', error);
+            // Continuar con los otros créditos
+        }
+    }
+    
+    return creditosCreados;
+}
+
+function calcularCreditosACrear() {
+    let creditos = [];
+    
+    if (paqueteSeleccionado.tipo === 'individual') {
+        creditos.push({
+            servicio_id: paqueteSeleccionado.servicio_id,
+            cantidad: 1,
+            precio_unitario: paqueteSeleccionado.precio,
+            nombre: paqueteSeleccionado.nombre
+        });
+    } else if (paqueteSeleccionado.tipo === 'multiple') {
+        paqueteSeleccionado.servicios.forEach(servicio => {
+            creditos.push({
+                servicio_id: servicio.servicio_id,
+                cantidad: servicio.cantidad,
+                precio_unitario: servicio.precio,
+                nombre: servicio.nombre
+            });
+        });
+    } else if (paqueteSeleccionado.tipo === 'paquete') {
+        paqueteSeleccionado.servicios.forEach(servicio => {
+            creditos.push({
+                servicio_id: servicio.servicio_id,
+                cantidad: servicio.cantidad,
+                precio_unitario: paqueteSeleccionado.precio / servicio.cantidad,
+                nombre: servicio.nombre
+            });
+        });
+    }
+    
+    return creditos;
+}
+
+// ============ UTILIDADES ============
+function preLlenarDatosUsuario() {
+    try {
+        if (typeof auth !== 'undefined' && auth && auth.isAuthenticated()) {
+            const user = auth.getUser();
+            const nombreInput = document.getElementById('nombre-completo');
+            const emailInput = document.getElementById('email');
+            const telefonoInput = document.getElementById('telefono');
+            const documentoInput = document.getElementById('documento');
+            
+            if (nombreInput && user.nombre) nombreInput.value = user.nombre;
+            if (emailInput && user.email) emailInput.value = user.email;
+            if (telefonoInput && user.telefono) telefonoInput.value = user.telefono;
+            if (documentoInput && user.documento) documentoInput.value = user.documento;
+            
+            console.log('✅ Datos de usuario pre-llenados');
+        }
+    } catch (error) {
+        console.warn('⚠️ No se pudieron pre-llenar los datos del usuario:', error);
     }
 }
 
@@ -578,8 +618,8 @@ function limpiarSelecciones() {
     paqueteSeleccionado = null;
     tipoSeleccion = null;
     
-    Object.keys(precios).forEach(servicio => {
-        const qtyElement = document.getElementById(`qty-${servicio}`);
+    serviciosDisponibles.forEach(servicio => {
+        const qtyElement = document.getElementById(`qty-${servicio.id}`);
         if (qtyElement) qtyElement.textContent = '0';
     });
     
@@ -596,6 +636,57 @@ function cancelarCompra() {
         mostrarMensaje('Compra cancelada', 'info');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+}
+
+function mostrarConfirmacionReal(pago, creditos, usuario) {
+    const seccionPago = document.getElementById('seccion-pago');
+    if (seccionPago) seccionPago.style.display = 'none';
+    
+    const confirmacion = document.getElementById('confirmacion');
+    if (confirmacion) {
+        confirmacion.style.display = 'block';
+        
+        // Actualizar información de la confirmación
+        const successIcon = confirmacion.querySelector('.success-icon');
+        const titulo = confirmacion.querySelector('h2');
+        const descripcion = confirmacion.querySelector('p');
+        
+        if (successIcon) successIcon.textContent = '✅';
+        if (titulo) titulo.textContent = '¡Compra Exitosa!';
+        if (descripcion) descripcion.textContent = 'Tus créditos han sido añadidos a tu cuenta';
+        
+        const listaCreditosFinales = document.getElementById('lista-creditos-finales');
+        if (listaCreditosFinales && creditos) {
+            let creditosHTML = '';
+            creditos.forEach(credito => {
+                creditosHTML += `
+                    <div class="credito-final">
+                        <span class="credito-nombre">${credito.servicio_nombre || 'Servicio'}</span>
+                        <span class="credito-cantidad">${credito.cantidad_disponible} crédito${credito.cantidad_disponible > 1 ? 's' : ''}</span>
+                    </div>
+                `;
+            });
+            listaCreditosFinales.innerHTML = creditosHTML;
+        }
+        
+        // Actualizar información de cuenta
+        const infoCuenta = confirmacion.querySelector('.info-cuenta');
+        if (infoCuenta) {
+            infoCuenta.innerHTML = `
+                <h3>Información de tu Cuenta:</h3>
+                <p>📧 <strong>Email:</strong> ${usuario.email}</p>
+                <p>🔑 <strong>ID de Pago:</strong> #${pago.id}</p>
+                <p>💰 <strong>Monto Pagado:</strong> ${formatearPrecio(pago.monto)}</p>
+                <p>📅 Tus créditos están listos para usar</p>
+                <p>🎯 Puedes agendar tus citas cuando lo necesites</p>
+            `;
+        }
+        
+        confirmacion.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    limpiarSelecciones();
+    mostrarMensaje('¡Pago procesado exitosamente! Créditos añadidos a tu cuenta.', 'success');
 }
 
 function validarFormulario(formData) {

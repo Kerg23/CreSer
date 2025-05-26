@@ -81,7 +81,7 @@
                 <div class="paquetes-grid">
 
                     <!-- Paquete Individual -->
-                    <div class="paquete-card">
+                    <div class="paquete-card paquete-individual">
                         <div class="paquete-header">
                             <h3>Sesión Individual</h3>
                             <p class="paquete-descripcion">Perfecto para comenzar tu proceso terapéutico</p>
@@ -90,41 +90,20 @@
                             <div class="servicio-selector">
                                 <label>Selecciona tu servicio:</label>
                                 <select id="servicio-individual">
-                                    <option value="">Elige un servicio</option>
-                                    <optgroup label="SERVICIOS DE EVALUACIÓN">
-                                        <option value="valoracion-individual" data-precio="100000">Valoración
-                                            Psicológica Individual (60 min) - $100.000</option>
-                                        <option value="evaluacion-sesion" data-precio="80000">Evaluación y Diagnóstico -
-                                            Sesión Individual - $80.000</option>
-                                    </optgroup>
-                                    <optgroup label="SERVICIOS TERAPÉUTICOS">
-                                        <option value="psicoterapia-individual" data-precio="70000">Psicoterapia
-                                            Individual (60 min) - $70.000</option>
-                                        <option value="pareja-valoracion" data-precio="120000">Psicoterapia de Pareja -
-                                            Valoración (90 min) - $120.000</option>
-                                        <option value="pareja-regular" data-precio="100000">Psicoterapia de Pareja -
-                                            Regular (60 min) - $100.000</option>
-                                    </optgroup>
-                                    <optgroup label="SERVICIOS ESPECIALIZADOS">
-                                        <option value="talleres-grupales" data-precio="45000">Talleres Grupales en Salud
-                                            Mental - $45.000</option>
-                                        <option value="orientacion-familiar" data-precio="110000">Orientación Familiar
-                                            (90 min) - $110.000</option>
-                                    </optgroup>
+                                    <option value="">Cargando servicios...</option>
                                 </select>
                             </div>
                             <div class="precio-paquete">
                                 <span class="precio" id="precio-individual">Selecciona un servicio</span>
                             </div>
                         </div>
-                        <button class="btn-seleccionar" onclick="seleccionarPaquete('individual')" disabled
-                            id="btn-individual">
+                        <button class="btn-seleccionar" onclick="seleccionarPaquete('individual')" disabled id="btn-individual">
                             Seleccionar
                         </button>
                     </div>
 
                     <!-- Paquete Múltiple -->
-                    <div class="paquete-card popular">
+                    <div class="paquete-card popular paquete-multiple">
                         <div class="badge-popular">Más Popular</div>
                         <div class="paquete-header">
                             <h3>Paquete Múltiple</h3>
@@ -132,122 +111,14 @@
                         </div>
                         <div class="servicios-incluidos">
                             <div class="servicios-selector-multiple">
-                                <h4>Selecciona tus servicios:</h4>
-
-                                <div class="categoria-servicios-compra">
-                                    <h5>Servicios de Evaluación</h5>
-                                    <div class="servicio-item">
-                                        <div class="servicio-info">
-                                            <span>Valoración Psicológica Individual</span>
-                                            <span class="precio-unitario">$100.000</span>
-                                        </div>
-                                        <div class="cantidad-selector">
-                                            <button type="button"
-                                                onclick="cambiarCantidad('valoracion-individual', -1)">-</button>
-                                            <span id="qty-valoracion-individual">0</span>
-                                            <button type="button"
-                                                onclick="cambiarCantidad('valoracion-individual', 1)">+</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="servicio-item">
-                                        <div class="servicio-info">
-                                            <span>Evaluación y Diagnóstico</span>
-                                            <span class="precio-unitario">$80.000</span>
-                                        </div>
-                                        <div class="cantidad-selector">
-                                            <button type="button"
-                                                onclick="cambiarCantidad('evaluacion-sesion', -1)">-</button>
-                                            <span id="qty-evaluacion-sesion">0</span>
-                                            <button type="button"
-                                                onclick="cambiarCantidad('evaluacion-sesion', 1)">+</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="categoria-servicios-compra">
-                                    <h5>Servicios Terapéuticos</h5>
-                                    <div class="servicio-item">
-                                        <div class="servicio-info">
-                                            <span>Psicoterapia Individual</span>
-                                            <span class="precio-unitario">$70.000</span>
-                                        </div>
-                                        <div class="cantidad-selector">
-                                            <button type="button"
-                                                onclick="cambiarCantidad('psicoterapia-individual', -1)">-</button>
-                                            <span id="qty-psicoterapia-individual">0</span>
-                                            <button type="button"
-                                                onclick="cambiarCantidad('psicoterapia-individual', 1)">+</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="servicio-item">
-                                        <div class="servicio-info">
-                                            <span>Pareja - Valoración (90 min)</span>
-                                            <span class="precio-unitario">$120.000</span>
-                                        </div>
-                                        <div class="cantidad-selector">
-                                            <button type="button"
-                                                onclick="cambiarCantidad('pareja-valoracion', -1)">-</button>
-                                            <span id="qty-pareja-valoracion">0</span>
-                                            <button type="button"
-                                                onclick="cambiarCantidad('pareja-valoracion', 1)">+</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="servicio-item">
-                                        <div class="servicio-info">
-                                            <span>Pareja - Regular (60 min)</span>
-                                            <span class="precio-unitario">$100.000</span>
-                                        </div>
-                                        <div class="cantidad-selector">
-                                            <button type="button"
-                                                onclick="cambiarCantidad('pareja-regular', -1)">-</button>
-                                            <span id="qty-pareja-regular">0</span>
-                                            <button type="button"
-                                                onclick="cambiarCantidad('pareja-regular', 1)">+</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="categoria-servicios-compra">
-                                    <h5>Servicios Especializados</h5>
-                                    <div class="servicio-item">
-                                        <div class="servicio-info">
-                                            <span>Talleres Grupales</span>
-                                            <span class="precio-unitario">$45.000</span>
-                                        </div>
-                                        <div class="cantidad-selector">
-                                            <button type="button"
-                                                onclick="cambiarCantidad('talleres-grupales', -1)">-</button>
-                                            <span id="qty-talleres-grupales">0</span>
-                                            <button type="button"
-                                                onclick="cambiarCantidad('talleres-grupales', 1)">+</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="servicio-item">
-                                        <div class="servicio-info">
-                                            <span>Orientación Familiar (90 min)</span>
-                                            <span class="precio-unitario">$110.000</span>
-                                        </div>
-                                        <div class="cantidad-selector">
-                                            <button type="button"
-                                                onclick="cambiarCantidad('orientacion-familiar', -1)">-</button>
-                                            <span id="qty-orientacion-familiar">0</span>
-                                            <button type="button"
-                                                onclick="cambiarCantidad('orientacion-familiar', 1)">+</button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <h4>Cargando servicios...</h4>
                             </div>
                             <div class="precio-paquete">
                                 <span class="precio" id="precio-multiple">$0</span>
                                 <span class="creditos-total" id="creditos-total">0 créditos</span>
                             </div>
                         </div>
-                        <button class="btn-seleccionar" onclick="seleccionarPaquete('multiple')" disabled
-                            id="btn-multiple">
+                        <button class="btn-seleccionar" onclick="seleccionarPaquete('multiple')" disabled id="btn-multiple">
                             Seleccionar Paquete
                         </button>
                     </div>
@@ -322,7 +193,7 @@
             </div>
         </section>
 
-        <!-- Formulario de Pago Simbólico -->
+        <!-- Formulario de Pago -->
         <section class="seccion-pago" id="seccion-pago" style="display: none;">
             <div class="container">
                 <div class="pago-layout">
@@ -348,7 +219,7 @@
                         </div>
                     </div>
 
-                    <!-- Datos del Cliente y Pago Simbólico -->
+                    <!-- Datos del Cliente y Pago -->
                     <div class="formulario-pago">
                         <h3>Información Personal y Pago</h3>
 
@@ -378,51 +249,38 @@
                                 </div>
                             </div>
 
-                            <!-- Pago Simbólico -->
-                            <div class="pago-simbolico">
-                                <h4>💳 Pago Simbólico (Demo)</h4>
-                                <div class="demo-notice">
+                            <!-- Pago Real -->
+                            <div class="pago-real">
+                                <h4>💳 Información de Pago</h4>
+                                <div class="info-notice">
                                     <div class="notice-content">
                                         <i class="fas fa-info-circle"></i>
-                                        <p><strong>Modo Demo:</strong> Este es un pago simbólico para demostración. 
-                                        No se realizará ningún cargo real a tu tarjeta.</p>
+                                        <p><strong>Pago Real:</strong> Este proceso creará un pago real en el sistema y asignará créditos a tu cuenta.</p>
                                     </div>
                                 </div>
                                 
-                                <div class="metodo-pago-demo">
+                                <div class="metodo-pago-real">
                                     <label class="payment-option selected">
-                                        <input type="radio" name="metodo-pago" value="demo" checked>
+                                        <input type="radio" name="metodo-pago" value="qr" checked>
                                         <div class="option-content">
-                                            <span>🎭 Pago Simbólico (Demo)</span>
-                                            <small>Simula el proceso de compra sin cargos reales</small>
+                                            <span>📱 Código QR</span>
+                                            <small>Pago mediante código QR</small>
                                         </div>
                                     </label>
-                                </div>
-
-                                <div class="simulacion-pago">
-                                    <h5>Simular Datos de Tarjeta</h5>
-                                    <div class="form-group">
-                                        <label for="numero-tarjeta-demo">Número de Tarjeta (Demo):</label>
-                                        <input type="text" id="numero-tarjeta-demo" placeholder="4111 1111 1111 1111" 
-                                               value="4111 1111 1111 1111" readonly>
-                                    </div>
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label for="vencimiento-demo">Vencimiento:</label>
-                                            <input type="text" id="vencimiento-demo" placeholder="12/25" 
-                                                   value="12/25" readonly>
+                                    <label class="payment-option">
+                                        <input type="radio" name="metodo-pago" value="efectivo">
+                                        <div class="option-content">
+                                            <span>💵 Efectivo</span>
+                                            <small>Pago en efectivo en el centro</small>
                                         </div>
-                                        <div class="form-group">
-                                            <label for="cvv-demo">CVV:</label>
-                                            <input type="text" id="cvv-demo" placeholder="123" 
-                                                   value="123" readonly>
+                                    </label>
+                                    <label class="payment-option">
+                                        <input type="radio" name="metodo-pago" value="transferencia">
+                                        <div class="option-content">
+                                            <span>🏦 Transferencia</span>
+                                            <small>Transferencia bancaria</small>
                                         </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="nombre-tarjeta-demo">Nombre en la Tarjeta:</label>
-                                        <input type="text" id="nombre-tarjeta-demo" placeholder="DEMO USER" 
-                                               value="DEMO USER" readonly>
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
 
@@ -432,7 +290,7 @@
                                     <input type="checkbox" id="acepto-terminos" required>
                                     <span class="checkmark"></span>
                                     Acepto los <a href="#" target="_blank">términos y condiciones</a> y autorizo el
-                                    procesamiento de mis datos (Demo)
+                                    procesamiento de mis datos
                                 </label>
                             </div>
 
@@ -440,7 +298,7 @@
                             <div class="botones-pago">
                                 <button type="button" class="btn-cancelar" onclick="cancelarCompra()">Cancelar</button>
                                 <button type="submit" class="btn-pagar">
-                                    <i class="fas fa-credit-card"></i> Procesar Pago Simbólico
+                                    <i class="fas fa-credit-card"></i> Procesar Pago
                                 </button>
                             </div>
                         </form>
@@ -454,8 +312,8 @@
             <div class="container">
                 <div class="confirmacion-card">
                     <div class="success-icon">✅</div>
-                    <h2>¡Compra Simbólica Exitosa!</h2>
-                    <p>Tus créditos han sido añadidos a tu cuenta (Demo)</p>
+                    <h2>¡Compra Exitosa!</h2>
+                    <p>Tus créditos han sido añadidos a tu cuenta</p>
 
                     <div class="creditos-obtenidos">
                         <h3>Créditos Obtenidos:</h3>
@@ -466,10 +324,9 @@
 
                     <div class="info-cuenta">
                         <h3>Información de tu Cuenta:</h3>
-                        <p>📧 En un entorno real, recibirías un correo con confirmación</p>
+                        <p>📧 Recibirás un correo con confirmación</p>
                         <p>🔑 Podrás iniciar sesión y agendar tus citas cuando lo necesites</p>
                         <p>📅 Tus créditos no tienen fecha de vencimiento</p>
-                        <p>🎭 <strong>Nota:</strong> Esta es una demostración, no se realizó ningún cargo real</p>
                     </div>
 
                     <div class="acciones-finales">

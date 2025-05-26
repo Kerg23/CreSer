@@ -11,16 +11,16 @@
 </head>
 
 <body>
-  <!-- AGREGADO: Header adaptativo -->
-  <header>
+  <!-- HEADER ADAPTATIVO CORREGIDO -->
+ <header>
         <div class="navbar">
             <div class="logo">
                 <img src="recursos/logo1.png" alt="CreSer Logo" id="logo1" onerror="this.style.display='none'">
                 <img src="recursos/logo2.png" alt="CreSer Logo2" id="logo2" onerror="this.style.display='none'">
             </div>
             <nav class="menu">
-                <a href="index.html" >Inicio</a>
-                <a href="servicios.html" class="activo">Servicios</a>
+                <a href="index.html" class="activo">Inicio</a>
+                <a href="servicios.html">Servicios</a>
                 <a href="comprar.html">Comprar</a>
                 <a href="noticias.html">Noticias</a>
                 
@@ -37,21 +37,33 @@
         </div>
     </header>
 
-  <!-- AGREGADO: Sección de créditos disponibles -->
+  <!-- ✅ REMOVIDO: Sección de créditos disponibles -->
+  <!-- 
   <section class="creditos-info" id="creditos-disponibles">
     <div class="loading">Cargando tus créditos disponibles...</div>
   </section>
+  -->
 
   <section class="agenda-container">
     <h1>Agendar una Cita</h1>
     
-    <!-- AGREGADO: Mensaje sin créditos -->
+    <!-- ✅ REMOVIDO: Mensaje sin créditos -->
+    <!-- 
     <div id="mensaje-sin-creditos" class="sin-creditos" style="display: none;">
       <div class="mensaje-contenido">
         <i class="fas fa-credit-card"></i>
         <h3>No tienes créditos disponibles</h3>
         <p>Para agendar una cita necesitas tener créditos disponibles.</p>
         <a href="comprar.html" class="btn-primary">Comprar Créditos</a>
+      </div>
+    </div>
+    -->
+
+    <!-- ✅ AGREGADO: Información de servicios -->
+    <div class="info-servicios">
+      <div class="info-card">
+        <i class="fas fa-info-circle"></i>
+        <p>Selecciona el servicio que necesitas y agenda tu cita. Todos nuestros servicios están disponibles en modalidad presencial y virtual.</p>
       </div>
     </div>
 
@@ -106,7 +118,7 @@
     </form>
   </section>
 
-  <!-- AGREGADO: Modal de confirmación -->
+  <!-- MODAL DE CONFIRMACIÓN -->
   <div id="modal-confirmacion" class="modal" style="display: none;">
     <div class="modal-content">
       <div class="modal-header">
@@ -123,11 +135,11 @@
     </div>
   </div>
 
-  <!-- Scripts actualizados -->
-  <script src="js/config.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/agendar-cita.js"></script>
-  <script src="/frontend/js/header-adaptativo.js"></script>
+  <!-- ✅ SCRIPTS CORREGIDOS CON RUTAS ABSOLUTAS -->
+  <script defer src="/js/config.js"></script>
+  <script defer src="/js/auth.js"></script>
+  <script defer src="/js/agendar-cita.js"></script>
+  <script defer src="/frontend/js/header-adaptativo.js"></script>
 </body>
 
 </html>

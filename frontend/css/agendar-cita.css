@@ -242,3 +242,48 @@ select {
         min-width: auto;
     }
 }
+
+
+/* Información de servicios */
+.info-servicios {
+    margin-bottom: 30px;
+}
+
+.info-card {
+    background: linear-gradient(135deg, #4EC3B1, #15846B);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(78, 195, 177, 0.3);
+}
+
+.info-card i {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.info-card p {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* Responsive para info card */
+@media (max-width: 768px) {
+    .info-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .info-card i {
+        font-size: 20px;
+    }
+    
+    .info-card p {
+        font-size: 14px;
+    }
+}

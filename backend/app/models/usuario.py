@@ -28,6 +28,7 @@ class Usuario(Base):
     citas = relationship("Cita", back_populates="usuario", lazy="select")
     pagos = relationship("Pago", back_populates="usuario", foreign_keys="Pago.usuario_id")
     pagos_aprobados = relationship("Pago", back_populates="aprobador", foreign_keys="Pago.aprobado_por")
+    creditos = relationship("Credito", back_populates="usuario")
     
     def to_dict(self):
         """Convertir modelo a diccionario con manejo seguro de fechas"""

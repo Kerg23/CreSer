@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
@@ -9,7 +9,6 @@ from app.config.database import get_db
 from app.utils.security import get_current_active_user, require_admin, get_password_hash
 from app.models.usuario import Usuario
 from app.models.cita import Cita
-from app.models.credito import Credito
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,6 @@ async def obtener_perfil_usuario(
     """Obtener perfil del usuario actual"""
     return current_user.to_dict()
 
-# AGREGADO: ENDPOINT FALTANTE PUT /perfil
 @router.put("/perfil")
 async def actualizar_perfil_usuario(
     datos: dict,
@@ -82,38 +80,122 @@ async def obtener_creditos_usuario(
     current_user: Usuario = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Obtener créditos del usuario"""
+    """Obtener créditos detallados del usuario"""
     try:
-        from app.models.servicio import Servicio
+        # Verificar si existe tabla creditos
+        try:
+            from app.models.credito import Credito
+            from app.models.servicio import Servicio
+            
+            # Consulta con JOIN para obtener información completa
+            creditos = db.query(Credito, Servicio).join(
+                Servicio, Credito.servicio_id == Servicio.id
+            ).filter(
+                Credito.usuario_id == current_user.id,
+                Credito.estado == "activo",
+                Credito.cantidad_disponible > 0
+            ).all()
+            
+            creditos_response = []
+            for credito, servicio in creditos:
+                creditos_response.append({
+                    "id": credito.id,
+                    "servicio_id": servicio.id,
+                    "servicio_nombre": servicio.nombre,
+                    "servicio_codigo": servicio.codigo,
+                    "cantidad_inicial": credito.cantidad_inicial,
+                    "cantidad_disponible": credito.cantidad_disponible,
+                    "cantidad_usada": credito.cantidad_inicial - credito.cantidad_disponible,
+                    "precio_unitario": float(credito.precio_unitario),
+                    "duracion": servicio.duracion_minutos,
+                    "fecha_compra": credito.created_at.isoformat() if credito.created_at else None,
+                    "fecha_vencimiento": credito.fecha_vencimiento.isoformat() if credito.fecha_vencimiento else None,
+                    "estado": credito.estado
+                })
+            
+            return creditos_response
+            
+        except ImportError:
+            # Si no existe tabla creditos, devolver array vacío
+            logger.warning("Tabla creditos no existe, devolviendo array vacío")
+            return []
+            
+    except Exception as e:
+        logger.error(f"Error obteniendo créditos del usuario {current_user.id}: {e}")
+        # En caso de error, devolver array vacío en lugar de error
+        return []
+
+@router.get("/buscar-por-email-publico")
+async def buscar_usuario_por_email_publico(
+    email: str = Query(..., description="Email del usuario a buscar"),
+    db: Session = Depends(get_db)
+):
+    """Buscar usuario por email - ENDPOINT PÚBLICO para sistema de pagos"""
+    try:
+        logger.info(f"Búsqueda pública de usuario por email: {email}")
         
-        creditos = db.query(Credito, Servicio).join(
-            Servicio, Credito.servicio_id == Servicio.id
-        ).filter(
-            Credito.usuario_id == current_user.id,
-            Credito.estado == "activo"
-        ).all()
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
         
-        creditos_response = []
-        for credito, servicio in creditos:
-            creditos_response.append({
-                "id": credito.id,
-                "servicio": servicio.codigo,
-                "servicio_id": servicio.id,
-                "servicio_nombre": servicio.nombre,
-                "nombre": servicio.nombre,
-                "cantidad": credito.cantidad_disponible,
-                "cantidad_disponible": credito.cantidad_disponible,
-                "cantidad_inicial": credito.cantidad_inicial,
-                "precio_unitario": float(credito.precio_unitario),
-                "duracion": servicio.duracion_minutos,
-                "estado": credito.estado
-            })
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-        return creditos_response
+        # Retornar solo datos básicos por seguridad
+        return {
+            "id": usuario.id,
+            "nombre": usuario.nombre,
+            "email": usuario.email,
+            "telefono": usuario.telefono,
+            "documento": usuario.documento,
+            "tipo": usuario.tipo,
+            "estado": usuario.estado
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error en búsqueda pública por email: {e}")
+        raise HTTPException(status_code=500, detail="Error buscando usuario")
+
+@router.post("/registro", status_code=status.HTTP_201_CREATED)
+async def registro_publico(
+    usuario_data: dict,
+    db: Session = Depends(get_db)
+):
+    """Registro público - retorna usuario existente si ya existe"""
+    try:
+        email = usuario_data['email']
+        logger.info(f"Registro/verificación para: {email}")
+        
+        # Verificar si el usuario ya existe
+        usuario_existente = db.query(Usuario).filter(Usuario.email == email).first()
+        
+        if usuario_existente:
+            logger.info(f"Usuario existente encontrado: {usuario_existente.id}")
+            # RETORNAR usuario existente en lugar de error
+            return usuario_existente.to_dict()
+        
+        # Crear nuevo usuario solo si no existe
+        nuevo_usuario = Usuario(
+            nombre=usuario_data['nombre'],
+            email=usuario_data['email'],
+            telefono=usuario_data.get('telefono'),
+            documento=usuario_data.get('documento'),
+            password=get_password_hash(usuario_data['password']),
+            tipo='cliente',
+            estado='activo'
+        )
+        
+        db.add(nuevo_usuario)
+        db.commit()
+        db.refresh(nuevo_usuario)
+        
+        logger.info(f"Nuevo usuario creado: {nuevo_usuario.id}")
+        return nuevo_usuario.to_dict()
         
     except Exception as e:
-        logger.error(f"Error obteniendo créditos: {e}")
-        raise HTTPException(status_code=500, detail="Error obteniendo créditos")
+        db.rollback()
+        logger.error(f"Error en registro: {e}")
+        raise HTTPException(status_code=500, detail="Error en registro")
 
 @router.get("/")
 async def listar_usuarios(
@@ -137,10 +219,14 @@ async def listar_usuarios(
                     Cita.usuario_id == usuario.id
                 ).scalar() or 0
                 
-                creditos_disponibles = db.query(func.sum(Credito.cantidad_disponible)).filter(
-                    Credito.usuario_id == usuario.id,
-                    Credito.estado == 'activo'
-                ).scalar() or 0
+                try:
+                    from app.models.credito import Credito
+                    creditos_disponibles = db.query(func.sum(Credito.cantidad_disponible)).filter(
+                        Credito.usuario_id == usuario.id,
+                        Credito.estado == 'activo'
+                    ).scalar() or 0
+                except ImportError:
+                    creditos_disponibles = 0
                 
                 usuario_dict = usuario.to_dict()
                 usuario_dict['creditos_disponibles'] = creditos_disponibles
@@ -214,6 +300,29 @@ async def crear_usuario(
 
 # ============ ENDPOINTS CON PARÁMETROS AL FINAL ============
 
+@router.get("/buscar-por-email")
+async def buscar_usuario_por_email(
+    email: str = Query(..., description="Email del usuario a buscar"),
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_admin)
+):
+    """Buscar usuario por email (solo admin)"""
+    try:
+        logger.info(f"Admin buscando usuario por email: {email}")
+        
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+        
+        if not usuario:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        return usuario.to_dict()
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error buscando usuario por email: {e}")
+        raise HTTPException(status_code=500, detail="Error buscando usuario")
+
 @router.get("/{usuario_id}")
 async def obtener_usuario(
     usuario_id: int,
@@ -239,10 +348,14 @@ async def obtener_usuario(
                 Cita.usuario_id == usuario_id
             ).scalar() or 0
             
-            creditos_disponibles = db.query(func.sum(Credito.cantidad_disponible)).filter(
-                Credito.usuario_id == usuario_id,
-                Credito.estado == 'activo'
-            ).scalar() or 0
+            try:
+                from app.models.credito import Credito
+                creditos_disponibles = db.query(func.sum(Credito.cantidad_disponible)).filter(
+                    Credito.usuario_id == usuario_id,
+                    Credito.estado == 'activo'
+                ).scalar() or 0
+            except ImportError:
+                creditos_disponibles = 0
             
             usuario_data = usuario.to_dict()
             usuario_data['total_citas'] = total_citas
@@ -383,55 +496,3 @@ async def eliminar_usuario(
         db.rollback()
         logger.error(f"Error eliminando usuario {usuario_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error eliminando usuario: {str(e)}")
-
-
-
-@router.get("/creditos")
-async def obtener_creditos_usuario(
-    current_user: Usuario = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """Obtener créditos detallados del usuario"""
-    try:
-        # Verificar si existe tabla creditos
-        try:
-            from app.models.credito import Credito
-            from app.models.servicio import Servicio
-            
-            # Consulta con JOIN para obtener información completa
-            creditos = db.query(Credito, Servicio).join(
-                Servicio, Credito.servicio_id == Servicio.id
-            ).filter(
-                Credito.usuario_id == current_user.id,
-                Credito.estado == "activo",
-                Credito.cantidad_disponible > 0
-            ).all()
-            
-            creditos_response = []
-            for credito, servicio in creditos:
-                creditos_response.append({
-                    "id": credito.id,
-                    "servicio_id": servicio.id,
-                    "servicio_nombre": servicio.nombre,
-                    "servicio_codigo": servicio.codigo,
-                    "cantidad_inicial": credito.cantidad_inicial,
-                    "cantidad_disponible": credito.cantidad_disponible,
-                    "cantidad_usada": credito.cantidad_inicial - credito.cantidad_disponible,
-                    "precio_unitario": float(credito.precio_unitario),
-                    "duracion": servicio.duracion_minutos,
-                    "fecha_compra": credito.created_at.isoformat() if credito.created_at else None,
-                    "fecha_vencimiento": credito.fecha_vencimiento.isoformat() if credito.fecha_vencimiento else None,
-                    "estado": credito.estado
-                })
-            
-            return creditos_response
-            
-        except ImportError:
-            # Si no existe tabla creditos, devolver array vacío
-            logger.warning("Tabla creditos no existe, devolviendo array vacío")
-            return []
-            
-    except Exception as e:
-        logger.error(f"Error obteniendo créditos del usuario {current_user.id}: {e}")
-        # En caso de error, devolver array vacío en lugar de error
-        return []
